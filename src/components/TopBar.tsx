@@ -1,7 +1,7 @@
 import { useCellsStore } from '../store/useCellsStore';
 
 export function TopBar() {
-  const { cells, startAll, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked } = useCellsStore();
+  const { cells, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked } = useCellsStore();
   const activeCount = runningIds.length;
   const hasSecrets = secretsBlob !== null;
 
@@ -43,14 +43,6 @@ export function TopBar() {
                 className="px-4 py-1.5 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
               >
                 Stop All
-              </button>
-            )}
-            {activeCount === 0 && cells.length > 0 && (
-              <button
-                onClick={startAll}
-                className="px-4 py-1.5 rounded text-xs font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
-              >
-                Start All
               </button>
             )}
           </div>

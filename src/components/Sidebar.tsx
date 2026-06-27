@@ -9,8 +9,9 @@ interface Props {
 }
 
 export function Sidebar({ view, onViewChange, onEditCell }: Props) {
-  const { cells, addCell, runningIds, secretsLocked, secretsBlob } = useCellsStore();
+  const { cells, addCell, runningIds, secretsLocked, secretsBlob, selectedIds, toggleSelected, clearSelection, startSelected, stopSelected } = useCellsStore();
   const hasSecrets = secretsBlob !== null;
+  const allSelectedRunning = selectedIds.length > 0 && selectedIds.every(id => runningIds.includes(id));
 
   return (
     <aside className="flex-shrink-0 w-64 bg-gray-900 border-r border-gray-700 flex flex-col min-h-0">
@@ -39,21 +40,39 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />
 
-      <div className="flex-shrink-0 px-3 py-2">
+      <div className="flex-shrink-0 px-3 py-2 flex items-center justify-between">
         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           Cells
         </span>
+        {selectedIds.length > 0 && (
+          <button
+            onClick={clearSelection}
+            className="text-[9px] text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            {selectedIds.length} selected · Clear
+          </button>
+        )}
       </div>
 
       <div className="flex-1 px-2 space-y-0.5 overflow-y-auto">
         {cells.map(cell => {
           const isRunning = runningIds.includes(cell.id);
+          const isSelected = selectedIds.includes(cell.id);
           return (
             <button
               key={cell.id}
-              onClick={() => onEditCell(cell.id)}
+              onClick={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                  toggleSelected(cell.id, true);
+                } else {
+                  toggleSelected(cell.id, false);
+                  onEditCell(cell.id);
+                }
+              }}
               className={`w-full flex items-center gap-2 px-4 py-2.5 rounded text-sm text-left font-medium transition-colors ${
-                view === 'scripts' && cell.status === 'running'
+                isSelected
+                  ? 'bg-blue-600/30 text-blue-200 ring-1 ring-blue-500/50'
+                  : view === 'scripts' && cell.status === 'running'
                   ? 'bg-gray-700/80 text-gray-100'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
               }`}
@@ -82,12 +101,38 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
       </div>
 
       <div className="flex-shrink-0 p-3 border-t border-gray-700">
-        <button
-          onClick={addCell}
-          className="w-full px-4 py-2.5 rounded text-sm font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
-        >
-          + Add Cell
-        </button>
+        {selectedIds.length > 0 ? (
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => selectedIds.forEach(id => useCellsStore.getState().runOnce(id))}
+              className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            >
+              Run {selectedIds.length}
+            </button>
+            {allSelectedRunning ? (
+              <button
+                onClick={stopSelected}
+                className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
+              >
+                Stop {selectedIds.length}
+              </button>
+            ) : (
+              <button
+                onClick={startSelected}
+                className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
+              >
+                Start {selectedIds.length}
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={addCell}
+            className="w-full px-4 py-2.5 rounded text-sm font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+          >
+            + Add Cell
+          </button>
+        )}
       </div>
     </aside>
   );

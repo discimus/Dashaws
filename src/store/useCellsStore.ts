@@ -86,6 +86,7 @@ interface CellsState {
   secrets: Record<string, string>;
   secretsBlob: EncryptedBlob | null;
   keepUnlocked: boolean;
+  selectedIds: string[];
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -107,6 +108,10 @@ interface CellsState {
   setSecretsPassword: (password: string) => Promise<void>;
   removeSecretsPassword: () => Promise<void>;
   toggleKeepUnlocked: () => void;
+  toggleSelected: (id: string, ctrl: boolean) => void;
+  clearSelection: () => void;
+  startSelected: () => void;
+  stopSelected: () => void;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
@@ -118,6 +123,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   secrets: {},
   secretsBlob: null,
   keepUnlocked: loadKeepUnlocked(),
+  selectedIds: [],
 
   init: async () => {
     const cells = await storage.list();
@@ -434,5 +440,56 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       saveSessionPassword(cachedSecretsPassword);
     }
     set({ keepUnlocked: next });
+  },
+
+  toggleSelected: (id, ctrl) => {
+    set(state => {
+      if (ctrl) {
+        const exists = state.selectedIds.includes(id);
+        return {
+          selectedIds: exists
+            ? state.selectedIds.filter(sid => sid !== id)
+            : [...state.selectedIds, id],
+        };
+      }
+      const alreadyOnly = state.selectedIds.length === 1 && state.selectedIds[0] === id;
+      return { selectedIds: alreadyOnly ? [] : [id] };
+    });
+  },
+
+  clearSelection: () => set({ selectedIds: [] }),
+
+  startSelected: () => {
+    const ids = get().selectedIds;
+    for (const id of ids) {
+      const cell = get().cells.find(c => c.id === id);
+      if (cell && !cell.enabled) {
+        set(state => ({
+          cells: state.cells.map(c =>
+            c.id === id ? { ...c, enabled: true, status: 'running' as const, updatedAt: Date.now() } : c
+          ),
+          runningIds: state.runningIds.includes(id) ? state.runningIds : [...state.runningIds, id],
+        }));
+        storage.save(get().cells.find(c => c.id === id)!);
+        scheduler?.start(id);
+      }
+    }
+  },
+
+  stopSelected: () => {
+    const ids = get().selectedIds;
+    for (const id of ids) {
+      const cell = get().cells.find(c => c.id === id);
+      if (cell?.enabled) {
+        scheduler?.stop(id);
+        set(state => ({
+          cells: state.cells.map(c =>
+            c.id === id ? { ...c, enabled: false, updatedAt: Date.now() } : c
+          ),
+          runningIds: state.runningIds.filter(rid => rid !== id),
+        }));
+        storage.save(get().cells.find(c => c.id === id)!);
+      }
+    }
   },
 }));
