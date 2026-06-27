@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { keymap } from '@codemirror/view';
+import { indentMore } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { autocompletion, acceptCompletion, type CompletionContext } from '@codemirror/autocomplete';
-import { Prec } from '@codemirror/state';
 import { useCellsStore } from '../store/useCellsStore';
 import type { Cell } from '../types/cell';
 
@@ -114,11 +114,27 @@ export function CellEditor({ cell }: Props) {
     };
 
     const envCompletion = autocompletion({ override: [envCompletionSource, secretsCompletionSource, propsCompletionSource] });
-    const tabAccept = Prec.high(keymap.of([{ key: 'Tab', run: acceptCompletion }]));
+    const tabHandler = keymap.of([{
+      key: 'Tab',
+      run: (target) => {
+        if (acceptCompletion(target)) return true;
+        return indentMore(target);
+      },
+    }]);
+
+    const blockBrowserShortcuts = EditorView.domEventHandlers({
+      keydown: (event) => {
+        const key = event.key.toLowerCase();
+        if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x', 'z', 'y', 'a'].includes(key)) return false;
+        if (event.ctrlKey || event.metaKey || event.altKey) { event.preventDefault(); return true; }
+        if (/^f\d+$/i.test(key)) { event.preventDefault(); return true; }
+        return false;
+      },
+    });
 
     const view = new EditorView({
       doc: cell.script,
-      extensions: [basicSetup, javascript(), oneDark, envCompletion, tabAccept, updateListener],
+      extensions: [basicSetup, javascript(), oneDark, envCompletion, tabHandler, blockBrowserShortcuts, updateListener],
       parent: containerRef.current,
     });
 

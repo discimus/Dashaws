@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
+import { keymap } from '@codemirror/view';
+import { indentMore } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -21,9 +23,19 @@ export function PropsEditor({ cell, onSave }: Props) {
       doc: cell.params || '{\n  \n}',
       extensions: [
         basicSetup,
+        keymap.of([{ key: 'Tab', run: indentMore }]),
         json(),
         oneDark,
         linter(jsonParseLinter()),
+        EditorView.domEventHandlers({
+          keydown: (event) => {
+            const key = event.key.toLowerCase();
+            if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x', 'z', 'y', 'a'].includes(key)) return false;
+            if (event.ctrlKey || event.metaKey || event.altKey) { event.preventDefault(); return true; }
+            if (/^f\d+$/i.test(key)) { event.preventDefault(); return true; }
+            return false;
+          },
+        }),
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             const content = update.state.doc.toString();
