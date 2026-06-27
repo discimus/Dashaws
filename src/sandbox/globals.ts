@@ -14,6 +14,13 @@ export interface SandboxGlobals {
   $state: Record<string, unknown>;
   $env: Record<string, string>;
   $secrets: Record<string, string>;
+  $props: Record<string, unknown>;
+  $cells: {
+    run: (id: string, props?: Record<string, string>) => void;
+    start: (id: string) => void;
+    stop: (id: string) => void;
+    list: () => { id: string; name: string; status: string }[];
+  };
   signal: AbortSignal;
   Math: typeof Math;
   Date: typeof Date;
@@ -114,6 +121,8 @@ export function createSandboxGlobals(
   env: Record<string, string>,
   secrets: Set<string>,
   secretsObj: Record<string, string>,
+  props: Record<string, unknown>,
+  cellsApi: SandboxGlobals['$cells'],
   signal: AbortSignal,
   onLog: (entry: LogEntry) => void
 ): { globals: SandboxGlobals; timerIds: Set<number> } {
@@ -154,6 +163,8 @@ export function createSandboxGlobals(
       $state: cellState,
       $env: { ...env },
       $secrets: { ...secretsObj },
+      $props: { ...props },
+      $cells: cellsApi,
       signal,
       Math,
       Date: stripped.Date,

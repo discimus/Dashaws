@@ -16,6 +16,7 @@ export interface Cell {
   status: CellStatus;
   output: LogEntry[];
   state: Record<string, unknown>;
+  params: string;
   createdAt: number;
   updatedAt: number;
 }

@@ -7,6 +7,7 @@ import { ConfirmPopover } from './ConfirmPopover';
 
 interface Props {
   cell: Cell;
+  onToggleParams: () => void;
 }
 
 const INTERVAL_PRESETS = [
@@ -21,7 +22,7 @@ const INTERVAL_PRESETS = [
   { label: '1h', value: 3600000 },
 ];
 
-export function CellControls({ cell }: Props) {
+export function CellControls({ cell, onToggleParams }: Props) {
   const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked, tryUnlockSecrets } =
     useCellsStore();
   const [isEditingName, setIsEditingName] = useState(false);
@@ -32,6 +33,9 @@ export function CellControls({ cell }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isRunning = runningIds.includes(cell.id);
+
+  let parsedCount = 0;
+  try { parsedCount = Object.keys(JSON.parse(cell.params || '{}')).length; } catch { /* invalid */ }
 
   const usesSecrets = /\$secrets\./.test(stripComments(cell.script));
   const blocked = usesSecrets && secretsLocked;
@@ -171,6 +175,17 @@ export function CellControls({ cell }: Props) {
         />
         {cell.status}
       </span>
+
+      {/* Params */}
+      <button
+        onClick={onToggleParams}
+        className={`text-[10px] font-medium transition-colors ${
+          parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
+        }`}
+        title="Edit parameters ($props)"
+      >
+        {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
+      </button>
 
       {/* Buttons */}
       <div className="flex items-center gap-1 ml-auto">

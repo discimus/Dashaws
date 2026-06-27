@@ -3,7 +3,6 @@ import type { Cell } from '../types/cell';
 import { LocalStorageBackend } from './storage';
 import { generateId } from '../utils/id';
 import { Scheduler } from '../sandbox/scheduler';
-import { executeScript } from '../sandbox/executor';
 import type { ExecutionResult } from '../sandbox/executor';
 import {
   encryptSecrets,
@@ -199,13 +198,14 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Cell ${get().cells.length + 1}`,
-      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example using $env:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n\n// Example using $secrets (values are masked in logs):\n// const data = await fetch("https://api.service.com", {\n//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }\n// });\n`,
+      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, $props, $cells, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example using $env:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n\n// Example using $secrets (values are masked in logs):\n// const data = await fetch("https://api.service.com", {\n//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }\n// });\n\n// Example using $cells to trigger another cell:\n// $cells.run("cell-id-here", { myParam: "hello" });\n`,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,
       status: 'idle',
       output: [],
       state: {},
+      params: '{}',
       createdAt: now,
       updatedAt: now,
     };
@@ -296,42 +296,14 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   },
 
   runOnce: (id) => {
-    const cell = get().cells.find(c => c.id === id);
-    if (!cell) return;
-
-    set(state => ({
-      cells: state.cells.map(c =>
-        c.id === id ? { ...c, status: 'running' as const } : c
-      ),
-    }));
-
-    const ac = new AbortController();
-    const state = get();
-    executeScript(
-      cell.script,
-      { ...cell.state },
-      { ...state.env },
-      secretsMaskSet(state.secrets),
-      { ...state.secrets },
-      ac.signal
-    ).then(result => {
+    if (scheduler) {
       set(state => ({
         cells: state.cells.map(c =>
-          c.id === id
-            ? {
-                ...c,
-                status: result.success ? 'success' : 'error',
-                lastRunAt: Date.now(),
-                output: [...c.output, ...result.output].slice(-200),
-                state: result.state,
-                updatedAt: Date.now(),
-              }
-            : c
+          c.id === id ? { ...c, status: 'running' as const } : c
         ),
       }));
-      const updated = get().cells.find(c => c.id === id);
-      if (updated) storage.save(updated);
-    });
+      scheduler.runOnce(id);
+    }
   },
 
   clearOutput: (id) => {

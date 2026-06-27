@@ -1,5 +1,5 @@
 import type { Cell } from '../types/cell';
-import type { ExecutionResult } from './executor';
+import type { ExecutionResult, CellsAPI } from './executor';
 import { executeScript } from './executor';
 
 type GetCell = (id: string) => Cell | undefined;
@@ -9,6 +9,15 @@ type GetEnv = () => {
   secretsObj: Record<string, string>;
 };
 type OnResult = (id: string, result: ExecutionResult) => void;
+
+function parseParams(params: string): Record<string, unknown> {
+  try {
+    const p = JSON.parse(params || '{}');
+    return typeof p === 'object' && p !== null && !Array.isArray(p) ? p : {};
+  } catch {
+    return {};
+  }
+}
 
 export class Scheduler {
   private intervals = new Map<string, ReturnType<typeof setInterval>>();
@@ -23,6 +32,29 @@ export class Scheduler {
     this.getEnv = getEnv;
   }
 
+  async runOnce(cellId: string, props?: Record<string, unknown>): Promise<ExecutionResult | null> {
+    const cell = this.getCell(cellId);
+    if (!cell) return null;
+
+    const ac = new AbortController();
+    const { env, secrets, secretsObj } = this.getEnv();
+    const resolvedProps = props ?? parseParams(cell.params);
+
+    const result = await executeScript(
+      cell.script,
+      { ...cell.state },
+      env,
+      secrets,
+      secretsObj,
+      resolvedProps,
+      this.buildCellsAPI(),
+      ac.signal
+    );
+
+    this.onResult(cellId, result);
+    return result;
+  }
+
   start(cellId: string): void {
     this.stop(cellId);
 
@@ -35,12 +67,15 @@ export class Scheduler {
 
       try {
         const { env, secrets, secretsObj } = this.getEnv();
+        const props = parseParams(cell?.params ?? '');
         const result = await executeScript(
           cell.script,
           { ...cell.state },
           env,
           secrets,
           secretsObj,
+          props,
+          this.buildCellsAPI(),
           ac.signal
         );
         this.onResult(cellId, result);
@@ -90,5 +125,31 @@ export class Scheduler {
 
   getRunningIds(): string[] {
     return Array.from(this.intervals.keys());
+  }
+
+  buildCellsAPI(): CellsAPI {
+    return {
+      run: (id, props) => { this.runOnce(id, props); },
+      start: (id) => {
+        const cell = this.getCell(id);
+        if (cell && !cell.enabled) {
+          cell.enabled = true;
+          this.start(id);
+        }
+      },
+      stop: (id) => this.stop(id),
+      list: () => {
+        const cells = [];
+        for (const c of this.intervals.keys()) {
+          const cell = this.getCell(c);
+          if (cell) cells.push(cell);
+        }
+        return cells.map(c => ({
+          id: c.id,
+          name: c.name,
+          status: this.intervals.has(c.id) ? 'running' : c.status,
+        }));
+      },
+    };
   }
 }

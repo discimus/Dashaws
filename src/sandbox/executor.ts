@@ -8,6 +8,13 @@ export interface ExecutionResult {
   state: Record<string, unknown>;
 }
 
+export interface CellsAPI {
+  run: (id: string, props?: Record<string, unknown>) => void;
+  start: (id: string) => void;
+  stop: (id: string) => void;
+  list: () => { id: string; name: string; status: string }[];
+}
+
 const BLOCKED_GLOBALS: Record<string, unknown> = {
   window: undefined,
   self: undefined,
@@ -32,12 +39,16 @@ export async function executeScript(
   env: Record<string, string>,
   secrets: Set<string>,
   secretsObj: Record<string, string>,
+  props: Record<string, unknown>,
+  cellsApi: CellsAPI,
   signal: AbortSignal
 ): Promise<ExecutionResult> {
   const output: LogEntry[] = [];
   const onLog = (entry: LogEntry) => output.push(entry);
 
-  const { globals, timerIds } = createSandboxGlobals(cellState, env, secrets, secretsObj, signal, onLog);
+  const { globals, timerIds } = createSandboxGlobals(
+    cellState, env, secrets, secretsObj, props, cellsApi, signal, onLog
+  );
 
   const blockedNames = Object.keys(BLOCKED_GLOBALS);
   const blockedValues = Object.values(BLOCKED_GLOBALS);

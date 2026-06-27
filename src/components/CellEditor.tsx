@@ -84,7 +84,36 @@ export function CellEditor({ cell }: Props) {
       }
     });
 
-    const envCompletion = autocompletion({ override: [envCompletionSource, secretsCompletionSource] });
+    const propsCompletionSource = (context: CompletionContext) => {
+      const before = context.matchBefore(/\$props\.(\w*)$/);
+      if (!before) return null;
+
+      const partial = before.text.slice(7); // strip "$props."
+      let keys: string[] = [];
+      try {
+        const params = JSON.parse(cell.params || '{}');
+        keys = Object.keys(typeof params === 'object' && params !== null ? params : {});
+      } catch { /* invalid */ }
+
+      if (keys.length === 0) return null;
+
+      const options = keys
+        .filter(key => partial === '' || key.toLowerCase().startsWith(partial.toLowerCase()))
+        .map(key => ({
+          label: `$props.${key}`,
+          type: 'property' as const,
+          detail: 'prop',
+          apply: `$props.${key}`,
+        }));
+
+      return {
+        from: before.from,
+        options,
+        validFor: (text: string) => /^\$props\.(\w*)$/.test(text),
+      };
+    };
+
+    const envCompletion = autocompletion({ override: [envCompletionSource, secretsCompletionSource, propsCompletionSource] });
     const tabAccept = Prec.high(keymap.of([{ key: 'Tab', run: acceptCompletion }]));
 
     const view = new EditorView({
