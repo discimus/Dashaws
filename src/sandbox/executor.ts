@@ -37,7 +37,7 @@ export async function executeScript(
   const output: LogEntry[] = [];
   const onLog = (entry: LogEntry) => output.push(entry);
 
-  const globals = createSandboxGlobals(cellState, env, secrets, secretsObj, signal, onLog);
+  const { globals, timerIds } = createSandboxGlobals(cellState, env, secrets, secretsObj, signal, onLog);
 
   const blockedNames = Object.keys(BLOCKED_GLOBALS);
   const blockedValues = Object.values(BLOCKED_GLOBALS);
@@ -95,5 +95,10 @@ export async function executeScript(
       output,
       state: maskState(cellState, secrets),
     };
+  } finally {
+    for (const id of timerIds) {
+      globalThis.clearTimeout(id);
+    }
+    timerIds.clear();
   }
 }

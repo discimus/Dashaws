@@ -83,6 +83,32 @@ export function maskState(
   return masked;
 }
 
+function stripConstructors(): {
+  Array: typeof Array;
+  Object: typeof Object;
+  String: typeof String;
+  Number: typeof Number;
+  Boolean: typeof Boolean;
+  RegExp: typeof RegExp;
+  Map: typeof Map;
+  Set: typeof Set;
+  Promise: typeof Promise;
+  ErrorConstructor: typeof Error;
+  Date: typeof Date;
+} {
+  const ctors = [Array, Object, String, Number, Boolean, RegExp, Map, Set, Promise, Error, Date];
+  const def = (ctor: unknown) => {
+    Object.defineProperty(ctor, 'constructor', {
+      value: undefined,
+      writable: false,
+      configurable: false,
+      enumerable: false,
+    });
+  };
+  ctors.forEach(def);
+  return { Array, Object, String, Number, Boolean, RegExp, Map, Set, Promise, ErrorConstructor: Error, Date };
+}
+
 export function createSandboxGlobals(
   cellState: Record<string, unknown>,
   env: Record<string, string>,
@@ -90,7 +116,9 @@ export function createSandboxGlobals(
   secretsObj: Record<string, string>,
   signal: AbortSignal,
   onLog: (entry: LogEntry) => void
-): SandboxGlobals {
+): { globals: SandboxGlobals; timerIds: Set<number> } {
+  const timerIds = new Set<number>();
+
   const consoleProxy = new Proxy({} as SandboxGlobals['console'], {
     get(_target, prop) {
       return (...args: unknown[]) => {
@@ -104,38 +132,50 @@ export function createSandboxGlobals(
     },
   });
 
+  const stripped = stripConstructors();
+
   return {
-    fetch: globalThis.fetch.bind(globalThis),
-    setTimeout: (fn, ms, ...args) => {
-      const id = globalThis.setTimeout(fn as () => void, ms, ...args);
-      return id;
+    timerIds,
+    globals: {
+      fetch: globalThis.fetch.bind(globalThis),
+      setTimeout: (fn, ms, ...args) => {
+        const id = globalThis.setTimeout(() => {
+          timerIds.delete(id);
+          (fn as () => void)();
+        }, ms, ...args);
+        timerIds.add(id);
+        return id;
+      },
+      clearTimeout: (id) => {
+        if (id !== undefined) timerIds.delete(id);
+        globalThis.clearTimeout(id);
+      },
+      console: consoleProxy,
+      $state: cellState,
+      $env: { ...env },
+      $secrets: { ...secretsObj },
+      signal,
+      Math,
+      Date: stripped.Date,
+      JSON,
+      Array: stripped.Array,
+      Object: stripped.Object,
+      String: stripped.String,
+      Number: stripped.Number,
+      Boolean: stripped.Boolean,
+      RegExp: stripped.RegExp,
+      Map: stripped.Map,
+      Set: stripped.Set,
+      Promise: stripped.Promise,
+      parseInt,
+      parseFloat,
+      isNaN,
+      isFinite,
+      encodeURI,
+      decodeURI,
+      btoa,
+      atob,
+      ErrorConstructor: stripped.ErrorConstructor,
     },
-    clearTimeout: (id) => globalThis.clearTimeout(id),
-    console: consoleProxy,
-    $state: cellState,
-    $env: { ...env },
-    $secrets: { ...secretsObj },
-    signal,
-    Math,
-    Date,
-    JSON,
-    Array,
-    Object,
-    String,
-    Number,
-    Boolean,
-    RegExp,
-    Map,
-    Set,
-    Promise,
-    parseInt,
-    parseFloat,
-    isNaN,
-    isFinite,
-    encodeURI,
-    decodeURI,
-    btoa,
-    atob,
-    ErrorConstructor: Error,
   };
 }
