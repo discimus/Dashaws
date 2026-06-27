@@ -135,7 +135,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Cell ${get().cells.length + 1}`,
-      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n`,
+      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example using $env:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n\n// Example using $secrets (values are masked in logs):\n// const data = await fetch("https://api.service.com", {\n//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }\n// });\n`,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,
