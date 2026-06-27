@@ -151,6 +151,7 @@ interface CellsState {
   clearSelection: () => void;
   startSelected: () => void;
   stopSelected: () => void;
+  deleteSelected: () => void;
 
   addQueue: (name: string, maxRetries: number) => void;
   deleteQueue: (name: string) => void;
@@ -567,6 +568,19 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
         storage.save(get().cells.find(c => c.id === id)!);
       }
     }
+  },
+
+  deleteSelected: () => {
+    const ids = get().selectedIds;
+    for (const id of ids) {
+      scheduler?.stop(id);
+      storage.delete(id);
+    }
+    set(state => ({
+      cells: state.cells.filter(c => !ids.includes(c.id)),
+      runningIds: state.runningIds.filter(rid => !ids.includes(rid)),
+      selectedIds: [],
+    }));
   },
 
   addQueue: (name, maxRetries) => {

@@ -8,8 +8,10 @@ interface Props {
 }
 
 export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
-  const { cells, addCell } = useCellsStore();
+  const { cells, addCell, selectedIds } = useCellsStore();
   const focusRef = useRef<HTMLDivElement>(null);
+
+  const filtered = selectedIds.length > 0 ? cells.filter(c => selectedIds.includes(c.id)) : cells;
 
   useEffect(() => {
     if (focusCellId && focusRef.current) {
@@ -36,7 +38,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-          Scripts ({cells.length})
+          Scripts {selectedIds.length > 0 ? `(${selectedIds.length}/${cells.length})` : `(${cells.length})`}
         </h2>
         <button
           onClick={addCell}
@@ -47,7 +49,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {cells.map(cell => (
+        {filtered.map(cell => (
           <div
             key={cell.id}
             ref={cell.id === focusCellId ? focusRef : undefined}
