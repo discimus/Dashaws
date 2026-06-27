@@ -16,10 +16,18 @@ export interface SandboxGlobals {
   $secrets: Record<string, string>;
   $props: Record<string, unknown>;
   $cells: {
-    run: (id: string, props?: Record<string, string>) => void;
+    run: (id: string, props?: Record<string, unknown>) => void;
     start: (id: string) => void;
     stop: (id: string) => void;
     list: () => { id: string; name: string; status: string }[];
+    enqueue: (name: string, body: string) => void;
+    emitEvent: (name: string, body: string) => void;
+  };
+  $queue: {
+    enqueue: (name: string, body: string) => void;
+  };
+  $pubsub: {
+    emit: (name: string, body: string) => void;
   };
   signal: AbortSignal;
   Math: typeof Math;
@@ -165,6 +173,8 @@ export function createSandboxGlobals(
       $secrets: { ...secretsObj },
       $props: { ...props },
       $cells: cellsApi,
+      $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
+      $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
       signal,
       Math,
       Date: stripped.Date,

@@ -36,6 +36,16 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           onClick={() => onViewChange('secrets')}
           label={`Secrets ${hasSecrets ? (secretsLocked ? '🔒' : '🔓') : ''}`}
         />
+        <SidebarLink
+          active={view === 'queues'}
+          onClick={() => onViewChange('queues')}
+          label="Queues"
+        />
+        <SidebarLink
+          active={view === 'pubsub'}
+          onClick={() => onViewChange('pubsub')}
+          label="Pub/Sub"
+        />
       </nav>
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />

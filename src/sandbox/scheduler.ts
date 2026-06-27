@@ -25,11 +25,21 @@ export class Scheduler {
   private getEnv: GetEnv;
   private getCell: GetCell;
   private onResult: OnResult;
+  private onEnqueue: (name: string, body: string) => void;
+  private onEmit: (name: string, body: string) => void;
 
-  constructor(getCell: GetCell, onResult: OnResult, getEnv: GetEnv) {
+  constructor(
+    getCell: GetCell,
+    onResult: OnResult,
+    getEnv: GetEnv,
+    onEnqueue: (name: string, body: string) => void,
+    onEmit: (name: string, body: string) => void
+  ) {
     this.getCell = getCell;
     this.onResult = onResult;
     this.getEnv = getEnv;
+    this.onEnqueue = onEnqueue;
+    this.onEmit = onEmit;
   }
 
   async runOnce(cellId: string, props?: Record<string, unknown>): Promise<ExecutionResult | null> {
@@ -150,6 +160,8 @@ export class Scheduler {
           status: this.intervals.has(c.id) ? 'running' : c.status,
         }));
       },
+      enqueue: (name, body) => this.onEnqueue(name, body),
+      emitEvent: (name, body) => this.onEmit(name, body),
     };
   }
 }

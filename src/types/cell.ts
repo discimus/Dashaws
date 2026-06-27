@@ -21,6 +21,25 @@ export interface Cell {
   updatedAt: number;
 }
 
+export interface QueueMessage {
+  id: string;
+  body: string;
+  timestamp: number;
+  retries: number;
+}
+
+export interface Queue {
+  name: string;
+  maxRetries: number;
+  subscriberIds: string[];
+  messages: QueueMessage[];
+}
+
+export interface EventTopic {
+  name: string;
+  subscriberIds: string[];
+}
+
 export interface StorageBackend {
   list(): Promise<Cell[]>;
   get(id: string): Promise<Cell | null>;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell } from '../types/cell';
+import type { Cell, Queue, EventTopic, QueueMessage } from '../types/cell';
 import { LocalStorageBackend } from './storage';
 import { generateId } from '../utils/id';
 import { Scheduler } from '../sandbox/scheduler';
@@ -76,6 +76,25 @@ function clearSessionPassword(): void {
   } catch { /* noop */ }
 }
 
+const QUEUE_STORAGE_KEY = 'script-dashboard-queues';
+const TOPIC_STORAGE_KEY = 'script-dashboard-topics';
+
+function loadQueues(): Record<string, Queue> {
+  try { return JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveQueues(q: Record<string, Queue>) {
+  localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(q));
+}
+
+function loadTopics(): Record<string, EventTopic> {
+  try { return JSON.parse(localStorage.getItem(TOPIC_STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveTopics(t: Record<string, EventTopic>) {
+  localStorage.setItem(TOPIC_STORAGE_KEY, JSON.stringify(t));
+}
+
 interface CellsState {
   cells: Cell[];
   loaded: boolean;
@@ -86,6 +105,8 @@ interface CellsState {
   secretsBlob: EncryptedBlob | null;
   keepUnlocked: boolean;
   selectedIds: string[];
+  queues: Record<string, Queue>;
+  eventTopics: Record<string, EventTopic>;
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -111,6 +132,17 @@ interface CellsState {
   clearSelection: () => void;
   startSelected: () => void;
   stopSelected: () => void;
+
+  addQueue: (name: string, maxRetries: number) => void;
+  deleteQueue: (name: string) => void;
+  enqueue: (name: string, body: string) => void;
+  addQueueSubscriber: (queueName: string, cellId: string) => void;
+  removeQueueSubscriber: (queueName: string, cellId: string) => void;
+  addEventTopic: (name: string) => void;
+  deleteEventTopic: (name: string) => void;
+  emitEvent: (name: string, body: string) => void;
+  addEventSubscriber: (topicName: string, cellId: string) => void;
+  removeEventSubscriber: (topicName: string, cellId: string) => void;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
@@ -123,11 +155,15 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   secretsBlob: null,
   keepUnlocked: loadKeepUnlocked(),
   selectedIds: [],
+  queues: {},
+  eventTopics: {},
 
   init: async () => {
     const cells = await storage.list();
     const env = loadEnv();
     const blob = loadBlob();
+    const queues = loadQueues();
+    const eventTopics = loadTopics();
 
     scheduler = new Scheduler(
       (id) => get().cells.find(c => c.id === id),
@@ -156,7 +192,9 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
           secrets: secretsMaskSet(state.secrets),
           secretsObj: { ...state.secrets },
         };
-      }
+      },
+      (name, body) => get().enqueue(name, body),
+      (name, body) => get().emitEvent(name, body)
     );
 
     const running = cells.filter(c => c.enabled);
@@ -190,7 +228,30 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       secrets: decrypted,
       secretsBlob: blob,
       runningIds: running.map(c => c.id),
+      queues,
+      eventTopics,
     });
+
+    setInterval(() => {
+      const state = get();
+      for (const q of Object.values(state.queues)) {
+        if (q.messages.length === 0) continue;
+        for (const subId of q.subscriberIds) {
+          if (state.runningIds.includes(subId)) continue;
+          const cell = state.cells.find(c => c.id === subId);
+          if (!cell) continue;
+          const msg = q.messages[0];
+          scheduler?.runOnce(subId, parseMessageBody(msg.body));
+          set(s => {
+            const queues = { ...s.queues };
+            queues[q.name] = { ...queues[q.name], messages: queues[q.name].messages.slice(1) };
+            saveQueues(queues);
+            return { queues };
+          });
+          break;
+        }
+      }
+    }, 2000);
   },
 
   addCell: async () => {
@@ -464,4 +525,108 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       }
     }
   },
+
+  addQueue: (name, maxRetries) => {
+    set(state => {
+      if (state.queues[name]) return state;
+      const queues = { ...state.queues, [name]: { name, maxRetries, subscriberIds: [], messages: [] } };
+      saveQueues(queues);
+      return { queues };
+    });
+  },
+
+  deleteQueue: (name) => {
+    set(state => {
+      const { [name]: _, ...queues } = state.queues;
+      saveQueues(queues);
+      return { queues };
+    });
+  },
+
+  enqueue: (name, body) => {
+    set(state => {
+      const queue = state.queues[name];
+      if (!queue) return state;
+      const msg: QueueMessage = { id: crypto.randomUUID(), body, timestamp: Date.now(), retries: 0 };
+      const queues = { ...state.queues, [name]: { ...queue, messages: [...queue.messages, msg] } };
+      saveQueues(queues);
+      return { queues };
+    });
+  },
+
+  addQueueSubscriber: (queueName, cellId) => {
+    set(state => {
+      const queue = state.queues[queueName];
+      if (!queue || queue.subscriberIds.includes(cellId)) return state;
+      const queues = { ...state.queues, [queueName]: { ...queue, subscriberIds: [...queue.subscriberIds, cellId] } };
+      saveQueues(queues);
+      return { queues };
+    });
+  },
+
+  removeQueueSubscriber: (queueName, cellId) => {
+    set(state => {
+      const queue = state.queues[queueName];
+      if (!queue) return state;
+      const queues = { ...state.queues, [queueName]: { ...queue, subscriberIds: queue.subscriberIds.filter(id => id !== cellId) } };
+      saveQueues(queues);
+      return { queues };
+    });
+  },
+
+  addEventTopic: (name) => {
+    set(state => {
+      if (state.eventTopics[name]) return state;
+      const eventTopics = { ...state.eventTopics, [name]: { name, subscriberIds: [] } };
+      saveTopics(eventTopics);
+      return { eventTopics };
+    });
+  },
+
+  deleteEventTopic: (name) => {
+    set(state => {
+      const { [name]: _, ...eventTopics } = state.eventTopics;
+      saveTopics(eventTopics);
+      return { eventTopics };
+    });
+  },
+
+  emitEvent: (name, body) => {
+    set(state => state); // no-op on state, just trigger
+    const state = get();
+    const topic = state.eventTopics[name];
+    if (!topic) return;
+    for (const cellId of topic.subscriberIds) {
+      scheduler?.runOnce(cellId, parseMessageBody(body));
+    }
+  },
+
+  addEventSubscriber: (topicName, cellId) => {
+    set(state => {
+      const topic = state.eventTopics[topicName];
+      if (!topic || topic.subscriberIds.includes(cellId)) return state;
+      const eventTopics = { ...state.eventTopics, [topicName]: { ...topic, subscriberIds: [...topic.subscriberIds, cellId] } };
+      saveTopics(eventTopics);
+      return { eventTopics };
+    });
+  },
+
+  removeEventSubscriber: (topicName, cellId) => {
+    set(state => {
+      const topic = state.eventTopics[topicName];
+      if (!topic) return state;
+      const eventTopics = { ...state.eventTopics, [topicName]: { ...topic, subscriberIds: topic.subscriberIds.filter(id => id !== cellId) } };
+      saveTopics(eventTopics);
+      return { eventTopics };
+    });
+  },
 }));
+
+function parseMessageBody(body: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(body);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
+  } catch {
+    return { message: body };
+  }
+}

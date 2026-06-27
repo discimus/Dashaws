@@ -6,9 +6,11 @@ import { Overview } from './components/Overview';
 import { ScriptsView } from './components/ScriptsView';
 import { EnvView } from './components/EnvView';
 import { SecretsView } from './components/SecretsView';
+import { QueuesView } from './components/QueuesView';
+import { PubSubView } from './components/PubSubView';
 import { Toast } from './components/Toast';
 
-export type View = 'overview' | 'scripts' | 'env' | 'secrets';
+export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub';
 
 export default function App() {
   const { loaded, init } = useCellsStore();
@@ -46,8 +48,12 @@ export default function App() {
             <ScriptsView focusCellId={focusCellId} onFocusHandled={() => setFocusCellId(null)} />
           ) : view === 'env' ? (
             <EnvView />
-          ) : (
+          ) : view === 'secrets' ? (
             <SecretsView />
+          ) : view === 'queues' ? (
+            <QueuesView />
+          ) : (
+            <PubSubView />
           )}
         </main>
       </div>

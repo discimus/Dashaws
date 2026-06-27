@@ -13,6 +13,8 @@ export interface CellsAPI {
   start: (id: string) => void;
   stop: (id: string) => void;
   list: () => { id: string; name: string; status: string }[];
+  enqueue: (name: string, body: string) => void;
+  emitEvent: (name: string, body: string) => void;
 }
 
 const BLOCKED_GLOBALS: Record<string, unknown> = {
