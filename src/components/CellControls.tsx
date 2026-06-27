@@ -3,6 +3,7 @@ import { useCellsStore } from '../store/useCellsStore';
 import type { Cell } from '../types/cell';
 import { stripComments } from '../utils/id';
 import { PromptModal } from './PromptModal';
+import { ConfirmPopover } from './ConfirmPopover';
 
 interface Props {
   cell: Cell;
@@ -28,6 +29,7 @@ export function CellControls({ cell }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [promptAction, setPromptAction] = useState<'start' | 'run' | null>(null);
   const [promptError, setPromptError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isRunning = runningIds.includes(cell.id);
 
@@ -81,9 +83,7 @@ export function CellControls({ cell }: Props) {
   };
 
   const handleDelete = () => {
-    if (confirm(`Delete cell "${cell.name}"?`)) {
-      deleteCell(cell.id);
-    }
+    deleteCell(cell.id);
   };
 
   const handleClearLogs = () => {
@@ -213,13 +213,19 @@ export function CellControls({ cell }: Props) {
                 Clear logs
               </button>
               <button
-                onClick={() => { setMenuOpen(false); handleDelete(); }}
+                onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
                 className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/30 transition-colors"
               >
                 Delete
               </button>
             </div>
           )}
+          <ConfirmPopover
+            open={confirmDelete}
+            message={`Delete "${cell.name}"?`}
+            onConfirm={() => { setConfirmDelete(false); handleDelete(); }}
+            onCancel={() => setConfirmDelete(false)}
+          />
         </div>
       </div>
 

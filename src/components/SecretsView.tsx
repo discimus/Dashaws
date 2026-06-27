@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
 import { useToastStore } from '../store/toastStore';
+import { ConfirmPopover } from './ConfirmPopover';
 
 export function SecretsView() {
   const {
@@ -22,6 +23,8 @@ export function SecretsView() {
   const [error, setError] = useState('');
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
+  const [menuKey, setMenuKey] = useState<string | null>(null);
 
   const entries = Object.entries(secrets);
   const hasPassword = secretsBlob !== null;
@@ -197,8 +200,7 @@ export function SecretsView() {
       {hasPassword && !secretsLocked && (
         <>
           {entries.length > 0 ? (
-            <div className="overflow-x-auto mt-4">
-              <table className="w-full text-sm">
+            <table className="w-full text-sm mt-4">
                 <thead>
                   <tr className="border-b border-gray-600 text-left">
                     <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/3">Key</th>
@@ -228,21 +230,36 @@ export function SecretsView() {
                           {'\u2022'.repeat(18)}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 relative">
                         <button
-                          onClick={() => handleDeleteSecret(key)}
-                          className="px-2 py-1 rounded text-xs font-semibold bg-gray-700 hover:bg-red-800 text-gray-300 hover:text-white transition-colors"
-                          title="Delete secret"
+                          onClick={() => setMenuKey(menuKey === key ? null : key)}
+                          className="px-2 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                          title="Actions"
                         >
-                          Del
+                          &#8942;
                         </button>
+                        {menuKey === key && (
+                          <div className="absolute right-0 top-full mt-1 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+                            <button
+                              onClick={() => { setMenuKey(null); setConfirmingKey(key); }}
+                              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/30 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                        <ConfirmPopover
+                          open={confirmingKey === key}
+                          message={`Delete "${key}"?`}
+                          onConfirm={() => { handleDeleteSecret(key); setConfirmingKey(null); }}
+                          onCancel={() => setConfirmingKey(null)}
+                        />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          ) : (
+            ) : (
             <div className="text-center py-12 text-gray-400 mt-4">
               <p className="text-sm">No secrets defined yet. Add your first secret below.</p>
             </div>

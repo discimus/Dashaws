@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
 import { useToastStore } from '../store/toastStore';
+import { ConfirmPopover } from './ConfirmPopover';
 
 export function EnvView() {
   const { env, setEnvVar, deleteEnvVar } = useCellsStore();
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
+  const [menuKey, setMenuKey] = useState<string | null>(null);
 
   const entries = Object.entries(env);
 
@@ -29,8 +32,7 @@ export function EnvView() {
       </div>
 
       {entries.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-600 text-left">
                 <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/3">Key</th>
@@ -70,20 +72,35 @@ export function EnvView() {
                       )}
                     </div>
                   </td>
-                  <td className="py-2.5 px-3">
+                  <td className="py-2.5 px-3 relative">
                     <button
-                      onClick={() => deleteEnvVar(key)}
-                      className="px-2 py-1 rounded text-xs font-semibold bg-gray-700 hover:bg-red-800 text-gray-300 hover:text-white transition-colors"
-                      title="Delete variable"
+                      onClick={() => setMenuKey(menuKey === key ? null : key)}
+                      className="px-2 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                      title="Actions"
                     >
-                      Del
+                      &#8942;
                     </button>
+                    {menuKey === key && (
+                      <div className="absolute right-0 top-full mt-1 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+                        <button
+                          onClick={() => { setMenuKey(null); setConfirmingKey(key); }}
+                          className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/30 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                    <ConfirmPopover
+                      open={confirmingKey === key}
+                      message={`Delete "${key}"?`}
+                      onConfirm={() => { deleteEnvVar(key); setConfirmingKey(null); }}
+                      onCancel={() => setConfirmingKey(null)}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
       ) : (
         <div className="text-center py-12 text-gray-400">
           <div className="text-3xl mb-2">&#128273;</div>
