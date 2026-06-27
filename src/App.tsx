@@ -8,9 +8,10 @@ import { EnvView } from './components/EnvView';
 import { SecretsView } from './components/SecretsView';
 import { QueuesView } from './components/QueuesView';
 import { PubSubView } from './components/PubSubView';
+import { CronView } from './components/CronView';
 import { Toast } from './components/Toast';
 
-export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub';
+export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons';
 
 export default function App() {
   const { loaded, init } = useCellsStore();
@@ -52,8 +53,10 @@ export default function App() {
             <SecretsView />
           ) : view === 'queues' ? (
             <QueuesView />
-          ) : (
+          ) : view === 'pubsub' ? (
             <PubSubView />
+          ) : (
+            <CronView />
           )}
         </main>
       </div>

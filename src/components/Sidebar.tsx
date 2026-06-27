@@ -46,6 +46,11 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           onClick={() => onViewChange('pubsub')}
           label="Pub/Sub"
         />
+        <SidebarLink
+          active={view === 'crons'}
+          onClick={() => onViewChange('crons')}
+          label="Cronjobs"
+        />
       </nav>
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />

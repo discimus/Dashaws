@@ -40,6 +40,20 @@ export interface EventTopic {
   subscriberIds: string[];
 }
 
+export interface CronTarget {
+  type: 'cell' | 'queue' | 'pubsub';
+  name: string;
+}
+
+export interface CronEntry {
+  name: string;
+  expression: string;
+  target: CronTarget;
+  payload: string;
+  enabled: boolean;
+  lastRunAt: number | null;
+}
+
 export interface StorageBackend {
   list(): Promise<Cell[]>;
   get(id: string): Promise<Cell | null>;

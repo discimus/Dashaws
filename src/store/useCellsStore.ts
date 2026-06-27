@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { Cell, Queue, EventTopic, QueueMessage } from '../types/cell';
+import type { Cell, Queue, EventTopic, QueueMessage, CronEntry } from '../types/cell';
 import { LocalStorageBackend } from './storage';
 import { generateId } from '../utils/id';
+import { cronMatches } from '../utils/cron';
 import { Scheduler } from '../sandbox/scheduler';
 import type { ExecutionResult } from '../sandbox/executor';
 import {
@@ -95,6 +96,23 @@ function saveTopics(t: Record<string, EventTopic>) {
   localStorage.setItem(TOPIC_STORAGE_KEY, JSON.stringify(t));
 }
 
+const CRON_STORAGE_KEY = 'script-dashboard-crons';
+
+function loadCrons(): CronEntry[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CRON_STORAGE_KEY) || '[]');
+    return raw.map((c: Partial<CronEntry>) => ({
+      ...c,
+      enabled: c.enabled ?? true,
+      lastRunAt: c.lastRunAt ?? null,
+    }));
+  } catch { return []; }
+}
+
+function saveCrons(c: CronEntry[]) {
+  localStorage.setItem(CRON_STORAGE_KEY, JSON.stringify(c));
+}
+
 interface CellsState {
   cells: Cell[];
   loaded: boolean;
@@ -107,6 +125,7 @@ interface CellsState {
   selectedIds: string[];
   queues: Record<string, Queue>;
   eventTopics: Record<string, EventTopic>;
+  crons: CronEntry[];
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -143,6 +162,12 @@ interface CellsState {
   emitEvent: (name: string, body: string) => void;
   addEventSubscriber: (topicName: string, cellId: string) => void;
   removeEventSubscriber: (topicName: string, cellId: string) => void;
+
+  addCron: (entry: Omit<CronEntry, 'lastRunAt'>) => void;
+  deleteCron: (name: string) => void;
+  toggleCron: (name: string) => void;
+  runCronNow: (name: string) => void;
+  editCron: (name: string, updates: Partial<Omit<CronEntry, 'name'>>) => void;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
@@ -157,6 +182,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   selectedIds: [],
   queues: {},
   eventTopics: {},
+  crons: [],
 
   init: async () => {
     const cells = await storage.list();
@@ -164,6 +190,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const blob = loadBlob();
     const queues = loadQueues();
     const eventTopics = loadTopics();
+    const crons = loadCrons();
 
     scheduler = new Scheduler(
       (id) => get().cells.find(c => c.id === id),
@@ -230,7 +257,23 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       runningIds: running.map(c => c.id),
       queues,
       eventTopics,
+      crons,
     });
+
+    setInterval(() => {
+      const state = get();
+      const now = new Date();
+      for (const cron of state.crons) {
+        if (!cron.enabled) continue;
+        if (cron.lastRunAt && now.getTime() - cron.lastRunAt < 55000) continue;
+        if (!cronMatches(cron.expression, now)) continue;
+        dispatchCron(cron, state);
+        set(s => ({
+          crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: now.getTime() } : c),
+        }));
+        saveCrons(get().crons);
+      }
+    }, 15000);
 
     setInterval(() => {
       const state = get();
@@ -620,6 +663,51 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       return { eventTopics };
     });
   },
+
+  addCron: (entry) => {
+    set(state => {
+      const crons = [...state.crons, { ...entry, lastRunAt: null }];
+      saveCrons(crons);
+      return { crons };
+    });
+  },
+
+  deleteCron: (name) => {
+    set(state => {
+      const crons = state.crons.filter(c => c.name !== name);
+      saveCrons(crons);
+      return { crons };
+    });
+  },
+
+  toggleCron: (name) => {
+    set(state => {
+      const crons = state.crons.map(c => c.name === name ? { ...c, enabled: !c.enabled } : c);
+      saveCrons(crons);
+      return { crons };
+    });
+  },
+
+  runCronNow: (name) => {
+    const state = get();
+    const cron = state.crons.find(c => c.name === name);
+    if (!cron) return;
+    dispatchCron(cron, state);
+    set(s => ({
+      crons: s.crons.map(c => c.name === name ? { ...c, lastRunAt: Date.now() } : c),
+    }));
+    saveCrons(get().crons);
+  },
+
+  editCron: (name, updates) => {
+    set(state => {
+      const crons = state.crons.map(c =>
+        c.name === name ? { ...c, ...updates, target: updates.target ?? c.target } : c
+      );
+      saveCrons(crons);
+      return { crons };
+    });
+  },
 }));
 
 function parseMessageBody(body: string): Record<string, unknown> {
@@ -628,5 +716,22 @@ function parseMessageBody(body: string): Record<string, unknown> {
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
   } catch {
     return { message: body };
+  }
+}
+
+function dispatchCron(cron: CronEntry, state: ReturnType<typeof useCellsStore.getState>): void {
+  const props = parseMessageBody(cron.payload);
+  switch (cron.target.type) {
+    case 'cell': {
+      const cell = state.cells.find(c => c.name === cron.target.name || c.id === cron.target.name);
+      if (cell) scheduler?.runOnce(cell.id, props);
+      break;
+    }
+    case 'queue':
+      state.enqueue(cron.target.name, cron.payload);
+      break;
+    case 'pubsub':
+      state.emitEvent(cron.target.name, cron.payload);
+      break;
   }
 }
