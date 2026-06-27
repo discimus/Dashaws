@@ -152,6 +152,8 @@ interface CellsState {
   startSelected: () => void;
   stopSelected: () => void;
   deleteSelected: () => void;
+  keepAlive: boolean;
+  toggleKeepAlive: () => void;
 
   addQueue: (name: string, maxRetries: number) => void;
   deleteQueue: (name: string) => void;
@@ -181,6 +183,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   secretsBlob: null,
   keepUnlocked: loadKeepUnlocked(),
   selectedIds: [],
+  keepAlive: false,
   queues: {},
   eventTopics: {},
   crons: [],
@@ -536,6 +539,13 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
 
   clearSelection: () => set({ selectedIds: [] }),
 
+  toggleKeepAlive: () => {
+    const next = !get().keepAlive;
+    set({ keepAlive: next });
+    if (next) startKeepAlive();
+    else stopKeepAlive();
+  },
+
   startSelected: () => {
     const ids = get().selectedIds;
     for (const id of ids) {
@@ -748,4 +758,34 @@ function dispatchCron(cron: CronEntry, state: ReturnType<typeof useCellsStore.ge
       state.emitEvent(cron.target.name, cron.payload);
       break;
   }
+}
+
+let wakeLock: WakeLockSentinel | null = null;
+let audioCtx: AudioContext | null = null;
+let oscillator: OscillatorNode | null = null;
+
+async function startKeepAlive(): Promise<void> {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch { /* not supported */ }
+
+  try {
+    audioCtx = new AudioContext();
+    oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.001;
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+    oscillator.start();
+  } catch { /* not supported */ }
+}
+
+function stopKeepAlive(): void {
+  wakeLock?.release().catch(() => {});
+  wakeLock = null;
+  oscillator?.stop();
+  oscillator = null;
+  audioCtx?.close();
+  audioCtx = null;
 }

@@ -1,7 +1,7 @@
 import { useCellsStore } from '../store/useCellsStore';
 
 export function TopBar() {
-  const { cells, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked } = useCellsStore();
+  const { cells, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked, keepAlive, toggleKeepAlive } = useCellsStore();
   const activeCount = runningIds.length;
   const hasSecrets = secretsBlob !== null;
 
@@ -22,6 +22,18 @@ export function TopBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleKeepAlive}
+            title={keepAlive ? 'Keep-alive active — prevents sleep/throttling' : 'Keep-alive inactive — enable to prevent sleep'}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-colors border ${
+              keepAlive
+                ? 'bg-green-600/20 border-green-600/30 text-green-400'
+                : 'bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <span>{keepAlive ? '⏳' : '⌛'}</span>
+            Keep alive
+          </button>
           {hasSecrets && (
             <button
               onClick={toggleKeepUnlocked}
