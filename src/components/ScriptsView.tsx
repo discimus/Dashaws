@@ -24,7 +24,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
         <p className="text-gray-400 mb-4">No scripts configured yet.</p>
         <button
           onClick={addCell}
-          className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
+          className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
         >
           + Add Cell
         </button>
@@ -40,7 +40,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
         </h2>
         <button
           onClick={addCell}
-          className="px-3 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+          className="px-3 py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
         >
           + Add Cell
         </button>

@@ -16,7 +16,7 @@ export function Overview({ onEditCell }: Props) {
         <p className="text-gray-400 mb-4">No cells yet. Create your first script cell.</p>
         <button
           onClick={addCell}
-          className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
+          className="px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
         >
           + Add Cell
         </button>
@@ -147,14 +147,14 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
         {isRunning ? (
           <button
             onClick={onStop}
-            className="px-2 py-0.5 rounded text-[10px] font-medium bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-red-600/80 hover:bg-red-600 text-white transition-colors"
           >
             Stop
           </button>
         ) : (
           <button
             onClick={onStart}
-            className="px-2 py-0.5 rounded text-[10px] font-medium bg-green-600/80 hover:bg-green-600 text-white transition-colors"
+            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-green-600/80 hover:bg-green-600 text-white transition-colors"
           >
             Start
           </button>
@@ -162,21 +162,21 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
         {!isRunning && (
           <button
             onClick={onRunOnce}
-            className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
           >
             Run
           </button>
         )}
         <button
           onClick={onClear}
-          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-600 hover:bg-gray-500 text-white transition-colors"
+          className="px-2.5 py-1 rounded text-[10px] font-semibold bg-gray-600 hover:bg-gray-500 text-white transition-colors"
         >
           Clear
         </button>
         <div className="flex-1" />
         <button
           onClick={onEdit}
-          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-600 hover:bg-gray-500 text-white transition-colors"
+          className="px-2.5 py-1 rounded text-[10px] font-semibold bg-gray-600 hover:bg-gray-500 text-white transition-colors"
         >
           Edit
         </button>

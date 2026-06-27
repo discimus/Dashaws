@@ -119,7 +119,7 @@ export function CellControls({ cell }: Props) {
         <button
           onClick={toggleRun}
           title={isRunning ? 'Stop' : 'Start'}
-          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
             isRunning
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-green-600 hover:bg-green-700 text-white'
@@ -132,7 +132,7 @@ export function CellControls({ cell }: Props) {
           <button
             onClick={() => runOnce(cell.id)}
             title="Run once"
-            className="px-2 py-0.5 rounded text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            className="px-2.5 py-1 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
           >
             Run
           </button>
@@ -141,7 +141,7 @@ export function CellControls({ cell }: Props) {
         <button
           onClick={() => clearOutput(cell.id)}
           title="Clear output"
-          className="px-2 py-0.5 rounded text-xs font-medium bg-gray-600 hover:bg-gray-500 text-white transition-colors"
+          className="px-2.5 py-1 rounded text-xs font-semibold bg-gray-600 hover:bg-gray-500 text-white transition-colors"
         >
           Clear
         </button>
@@ -153,7 +153,7 @@ export function CellControls({ cell }: Props) {
             }
           }}
           title="Delete cell"
-          className="px-2 py-0.5 rounded text-xs font-medium bg-gray-700 hover:bg-red-800 text-gray-300 hover:text-white transition-colors"
+          className="px-2.5 py-1 rounded text-xs font-semibold bg-gray-700 hover:bg-red-800 text-gray-300 hover:text-white transition-colors"
         >
           Del
         </button>

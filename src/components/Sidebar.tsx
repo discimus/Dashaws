@@ -41,7 +41,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
             <button
               key={cell.id}
               onClick={() => onEditCell(cell.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors ${
+              className={`w-full flex items-center gap-2 px-4 py-2.5 rounded text-sm text-left font-medium transition-colors ${
                 view === 'scripts' && cell.status === 'running'
                   ? 'bg-gray-700/80 text-gray-100'
                   : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
@@ -73,7 +73,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
       <div className="flex-shrink-0 p-3 border-t border-gray-700">
         <button
           onClick={addCell}
-          className="w-full px-3 py-2 rounded text-sm font-medium bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+          className="w-full px-4 py-2.5 rounded text-sm font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
         >
           + Add Cell
         </button>
@@ -86,7 +86,7 @@ function SidebarLink({ active, onClick, label }: { active: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-        className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors ${
         active
           ? 'bg-gray-700 text-white'
           : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
