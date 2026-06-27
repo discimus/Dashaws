@@ -1,3 +1,9 @@
+export function stripComments(script: string): string {
+  return script
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+}
+
 export function generateId(): string {
   return crypto.randomUUID();
 }

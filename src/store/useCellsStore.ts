@@ -78,7 +78,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   loaded: false,
   runningIds: [],
   env: {},
-  secretsLocked: true,
+  secretsLocked: false,
   secrets: {},
   secretsBlob: null,
 

@@ -1,6 +1,8 @@
+import { useState, useRef, useEffect } from 'react';
 import type { Cell } from '../types/cell';
 import { useCellsStore } from '../store/useCellsStore';
-import { formatTimeAgo } from '../utils/id';
+import { formatTimeAgo, stripComments } from '../utils/id';
+import { PromptModal } from './PromptModal';
 
 interface Props {
   onEditCell: (cellId: string) => void;
@@ -48,7 +50,7 @@ export function Overview({ onEditCell }: Props) {
             key={cell.id}
             cell={cell}
             isRunning={runningIds.includes(cell.id)}
-            blocked={/\$secrets\./.test(cell.script) && secretsLocked}
+            blocked={/\$secrets\./.test(stripComments(cell.script)) && secretsLocked}
             onEdit={() => onEditCell(cell.id)}
             onStart={() => startCell(cell.id)}
             onStop={() => stopCell(cell.id)}
@@ -83,6 +85,52 @@ interface CardProps {
 
 function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRunOnce, onClear }: CardProps) {
   const lastOutputs = cell.output.slice(-4);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [promptAction, setPromptAction] = useState<'start' | 'run' | null>(null);
+  const [promptError, setPromptError] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+  const tryUnlockSecrets = useCellsStore(s => s.tryUnlockSecrets);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const handlePromptConfirm = async (password: string) => {
+    const ok = await tryUnlockSecrets(password);
+    if (ok) {
+      setPromptAction(null);
+      setPromptError('');
+      if (promptAction === 'start') onStart();
+      else if (promptAction === 'run') onRunOnce();
+    } else {
+      setPromptError('Incorrect password.');
+    }
+  };
+
+  const handleStart = () => {
+    if (blocked) {
+      setPromptAction('start');
+      setPromptError('');
+    } else {
+      onStart();
+    }
+  };
+
+  const handleRun = () => {
+    if (blocked) {
+      setPromptAction('run');
+      setPromptError('');
+    } else {
+      onRunOnce();
+    }
+  };
 
   return (
     <div
@@ -155,46 +203,56 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
           </button>
         ) : (
           <button
-            onClick={blocked ? undefined : onStart}
-            title={blocked ? 'Secrets locked — unlock to run' : 'Start'}
-            disabled={blocked}
-            className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${
-              blocked
-                ? 'bg-gray-600 text-gray-500 cursor-not-allowed'
-                : 'bg-green-600/80 hover:bg-green-600 text-white'
-            }`}
+            onClick={handleStart}
+            title={blocked ? 'Secrets locked — click to unlock' : 'Start'}
+            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-green-600/80 hover:bg-green-600 text-white transition-colors"
           >
-            Start
+            {blocked && '\u{1F512} '}Start
           </button>
         )}
         {!isRunning && (
           <button
-            onClick={blocked ? undefined : onRunOnce}
-            title={blocked ? 'Secrets locked — unlock to run' : 'Run once'}
-            disabled={blocked}
-            className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${
-              blocked
-                ? 'bg-gray-600 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600/60 hover:bg-blue-600 text-white'
-            }`}
+            onClick={handleRun}
+            title={blocked ? 'Secrets locked — click to unlock' : 'Run once'}
+            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
           >
-            Run
+            {blocked && '\u{1F512} '}Run
           </button>
         )}
-        <button
-          onClick={onClear}
-          className="px-2.5 py-1 rounded text-[10px] font-semibold bg-gray-600 hover:bg-gray-500 text-white transition-colors"
-        >
-          Clear
-        </button>
         <div className="flex-1" />
-        <button
-          onClick={onEdit}
-          className="px-2.5 py-1 rounded text-[10px] font-semibold bg-gray-600 hover:bg-gray-500 text-white transition-colors"
-        >
-          Edit
-        </button>
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="px-2 py-1 rounded text-[10px] font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+            title="More actions"
+          >
+            &#8942;
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+              <button
+                onClick={() => { onClear(); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold text-gray-300 hover:bg-gray-700 transition-colors"
+              >
+                Clear logs
+              </button>
+              <button
+                onClick={onEdit}
+                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold text-blue-400 hover:bg-blue-900/20 transition-colors"
+              >
+                Edit script
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      <PromptModal
+        open={promptAction !== null}
+        onCancel={() => { setPromptAction(null); setPromptError(''); }}
+        onConfirm={handlePromptConfirm}
+        error={promptError}
+      />
     </div>
   );
 }
