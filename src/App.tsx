@@ -32,11 +32,11 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-gray-950 text-gray-100 overflow-hidden">
+    <div className="h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <TopBar />
       <div className="flex h-full pt-11">
         <Sidebar view={view} onViewChange={setView} onEditCell={navigateToEditor} />
-        <main className="flex-1 overflow-y-auto px-4 pb-4">
+        <main className="flex-1 overflow-y-auto px-4 pb-4 bg-gray-800">
           {view === 'overview' ? (
             <Overview onEditCell={navigateToEditor} />
           ) : (

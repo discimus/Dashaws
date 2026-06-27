@@ -41,17 +41,17 @@ export function CellOutput({ cell }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="border-t border-gray-700 bg-gray-900/50 h-48 overflow-y-auto p-2 font-mono text-xs"
+      className="border-t border-gray-600 bg-gray-700/50 h-48 overflow-y-auto p-2 font-mono text-xs"
     >
       {cell.output.length === 0 ? (
-        <span className="text-gray-600 italic">No output yet</span>
+        <span className="text-gray-400 italic">No output yet</span>
       ) : (
         cell.output.map((entry, i) => (
-          <div key={i} className={`${getColor(entry.type)} py-0.5 border-b border-gray-800/50`}>
-            <span className="text-gray-600 mr-2 text-[10px]">
+          <div key={i} className={`${getColor(entry.type)} py-0.5 border-b border-gray-600/50`}>
+            <span className="text-gray-400 mr-2 text-[10px]">
               {new Date(entry.timestamp).toLocaleTimeString()}
             </span>
-            <span className="text-gray-500 mr-1">[{entry.type}]</span>
+            <span className="text-gray-400 mr-1">[{entry.type}]</span>
             {entry.args.map((arg, j) => (
               <span key={j} className="whitespace-pre-wrap">
                 {j > 0 ? ' ' : ''}{formatValue(arg)}

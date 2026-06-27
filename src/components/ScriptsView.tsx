@@ -21,7 +21,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
   if (cells.length === 0) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500 mb-4">No scripts configured yet.</p>
+        <p className="text-gray-400 mb-4">No scripts configured yet.</p>
         <button
           onClick={addCell}
           className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
@@ -34,7 +34,7 @@ export function ScriptsView({ focusCellId, onFocusHandled }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between sticky top-0 z-10 bg-gray-950 pt-3 pb-3">
+      <div className="flex items-center justify-between sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
           Scripts ({cells.length})
         </h2>

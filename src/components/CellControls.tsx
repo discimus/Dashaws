@@ -58,7 +58,7 @@ export function CellControls({ cell }: Props) {
               setIsEditingName(false);
             }
           }}
-          className="bg-gray-700 border border-gray-600 rounded px-2 py-0.5 text-sm w-40 outline-none focus:border-blue-500"
+          className="bg-gray-800 border border-gray-500 rounded px-2 py-0.5 text-sm w-40 outline-none focus:border-blue-500"
         />
       ) : (
         <span
@@ -78,7 +78,7 @@ export function CellControls({ cell }: Props) {
         <select
           value={cell.intervalMs}
           onChange={e => updateCell(cell.id, { intervalMs: Number(e.target.value) })}
-          className="bg-gray-700 border border-gray-600 rounded px-1.5 py-0.5 text-xs outline-none"
+          className="bg-gray-800 border border-gray-500 rounded px-1.5 py-0.5 text-xs outline-none"
         >
           {INTERVAL_PRESETS.map(p => (
             <option key={p.value} value={p.value}>
@@ -97,7 +97,7 @@ export function CellControls({ cell }: Props) {
             ? 'text-green-400'
             : cell.status === 'error'
             ? 'text-red-400'
-            : 'text-gray-500'
+            : 'text-gray-400'
         }`}
       >
         <span

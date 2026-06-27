@@ -12,8 +12,8 @@ export function Overview({ onEditCell }: Props) {
   if (cells.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="text-gray-500 mb-2 text-4xl">&#9633;</div>
-        <p className="text-gray-500 mb-4">No cells yet. Create your first script cell.</p>
+        <div className="text-gray-400 mb-2 text-4xl">&#9633;</div>
+        <p className="text-gray-400 mb-4">No cells yet. Create your first script cell.</p>
         <button
           onClick={addCell}
           className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
@@ -29,7 +29,7 @@ export function Overview({ onEditCell }: Props) {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-gray-950 pt-3 pb-3">
+      <div className="sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
         <div className="grid grid-cols-4 gap-3">
           <StatBox label="Cells" value={cells.length} color="text-blue-400" />
           <StatBox label="Running" value={runningIds.length} color="text-yellow-400" />
@@ -38,7 +38,7 @@ export function Overview({ onEditCell }: Props) {
         </div>
         <div className="mt-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Cells</h2>
-          <span className="text-xs text-gray-600">{cells.length} total</span>
+          <span className="text-xs text-gray-400">{cells.length} total</span>
         </div>
       </div>
 
@@ -62,9 +62,9 @@ export function Overview({ onEditCell }: Props) {
 
 function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+    <div className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
     </div>
   );
 }
@@ -84,7 +84,7 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
 
   return (
     <div
-      className="border border-gray-800 rounded-lg bg-gray-900/40 hover:border-gray-700 transition-colors p-3 cursor-pointer"
+      className="border border-gray-600 rounded-lg bg-gray-700/60 hover:border-gray-500 transition-colors p-3 cursor-pointer"
       onClick={onEdit}
     >
       <div className="flex items-start justify-between mb-2">
@@ -97,34 +97,34 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
                 ? 'bg-green-400'
                 : cell.status === 'error'
                 ? 'bg-red-400'
-                : 'bg-gray-600'
+                : 'bg-gray-500'
             }`}
           />
           <div className="min-w-0">
             <div className="text-sm font-medium truncate">{cell.name}</div>
-            <div className="text-[10px] text-gray-500">
+            <div className="text-[10px] text-gray-400">
               Every {formatInterval(cell.intervalMs)}
               {cell.lastRunAt && ` · ${formatTimeAgo(cell.lastRunAt)}`}
             </div>
           </div>
         </div>
         <span
-          className={`text-[10px] font-medium uppercase flex-shrink-0 ml-2 ${
-            cell.status === 'running'
-              ? 'text-yellow-400'
-              : cell.status === 'error'
-              ? 'text-red-400'
-              : cell.status === 'success'
-              ? 'text-green-400'
-              : 'text-gray-600'
-          }`}
+              className={`text-[10px] font-medium uppercase flex-shrink-0 ml-2 ${
+                cell.status === 'running'
+                  ? 'text-yellow-400'
+                  : cell.status === 'error'
+                  ? 'text-red-400'
+                  : cell.status === 'success'
+                  ? 'text-green-400'
+                  : 'text-gray-400'
+              }`}
         >
           {cell.status}
         </span>
       </div>
 
       {lastOutputs.length > 0 && (
-        <div className="border-t border-gray-800/50 pt-2 mb-2 min-h-0">
+        <div className="border-t border-gray-600/50 pt-2 mb-2 min-h-0">
           {lastOutputs.map((entry, i: number) => (
             <div
               key={i}
@@ -133,10 +133,10 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
                   ? 'text-red-400'
                   : entry.type === 'warn'
                   ? 'text-yellow-400'
-                  : 'text-gray-400'
+                  : 'text-gray-300'
               }`}
             >
-              <span className="text-gray-700 mr-1">[{entry.type}]</span>
+              <span className="text-gray-400 mr-1">[{entry.type}]</span>
               {entry.args.map((a: unknown) => formatAtom(a)).join(' ')}
             </div>
           ))}
@@ -169,14 +169,14 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
         )}
         <button
           onClick={onClear}
-          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-600 hover:bg-gray-500 text-white transition-colors"
         >
           Clear
         </button>
         <div className="flex-1" />
         <button
           onClick={onEdit}
-          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+          className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-600 hover:bg-gray-500 text-white transition-colors"
         >
           Edit
         </button>

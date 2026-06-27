@@ -5,7 +5,7 @@ export function TopBar() {
   const activeCount = runningIds.length;
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-gray-950 border-b border-gray-800 h-11 flex items-center z-30">
+    <header className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-700 h-11 flex items-center z-30">
       <div className="flex items-center justify-between w-full px-4">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-bold tracking-tight">Script Dashboard</h1>
