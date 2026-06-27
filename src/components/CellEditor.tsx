@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
+import { keymap } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
+import { autocompletion, acceptCompletion, type CompletionContext } from '@codemirror/autocomplete';
+import { Prec } from '@codemirror/state';
 import { useCellsStore } from '../store/useCellsStore';
 import type { Cell } from '../types/cell';
 
@@ -57,10 +59,11 @@ export function CellEditor({ cell }: Props) {
     });
 
     const envCompletion = autocompletion({ override: [envCompletionSource] });
+    const tabAccept = Prec.high(keymap.of([{ key: 'Tab', run: acceptCompletion }]));
 
     const view = new EditorView({
       doc: cell.script,
-      extensions: [basicSetup, javascript(), oneDark, envCompletion, updateListener],
+      extensions: [basicSetup, javascript(), oneDark, envCompletion, tabAccept, updateListener],
       parent: containerRef.current,
     });
 
