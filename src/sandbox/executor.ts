@@ -1,5 +1,5 @@
 import type { LogEntry } from '../types/cell';
-import { createSandboxGlobals } from './globals';
+import { createSandboxGlobals, maskState } from './globals';
 
 export interface ExecutionResult {
   success: boolean;
@@ -8,19 +8,45 @@ export interface ExecutionResult {
   state: Record<string, unknown>;
 }
 
+const BLOCKED_GLOBALS: Record<string, unknown> = {
+  window: undefined,
+  self: undefined,
+  globalThis: undefined,
+  frames: undefined,
+  parent: undefined,
+  top: undefined,
+  document: undefined,
+  localStorage: undefined,
+  sessionStorage: undefined,
+  Function: undefined,
+  XMLHttpRequest: undefined,
+  WebSocket: undefined,
+  EventSource: undefined,
+  location: undefined,
+  indexedDB: undefined,
+};
+
 export async function executeScript(
   script: string,
   cellState: Record<string, unknown>,
   env: Record<string, string>,
+  secrets: Set<string>,
   signal: AbortSignal
 ): Promise<ExecutionResult> {
   const output: LogEntry[] = [];
   const onLog = (entry: LogEntry) => output.push(entry);
 
-  const globals = createSandboxGlobals(cellState, env, signal, onLog);
+  const globals = createSandboxGlobals(cellState, env, secrets, signal, onLog);
+
+  const blockedNames = Object.keys(BLOCKED_GLOBALS);
+  const blockedValues = Object.values(BLOCKED_GLOBALS);
+
   const entries = Object.entries(globals) as [string, unknown][];
   const globalNames = entries.map(([name]) => name);
   const globalValues = entries.map(([, value]) => value);
+
+  const allNames = [...blockedNames, ...globalNames];
+  const allValues = [...blockedValues, ...globalValues];
 
   const wrappedScript = `
     "use strict";
@@ -30,13 +56,13 @@ export async function executeScript(
   `;
 
   try {
-    const fn = new Function(...globalNames, wrappedScript);
-    await fn(...globalValues);
+    const fn = new Function(...allNames, wrappedScript);
+    await fn(...allValues);
 
     return {
       success: true,
       output,
-      state: { ...cellState },
+      state: maskState(cellState, secrets),
     };
   } catch (err) {
     if (signal.aborted) {
@@ -48,7 +74,7 @@ export async function executeScript(
       return {
         success: true,
         output,
-        state: { ...cellState },
+        state: maskState(cellState, secrets),
       };
     }
 
@@ -66,7 +92,7 @@ export async function executeScript(
       success: false,
       error: errorMessage,
       output,
-      state: { ...cellState },
+      state: maskState(cellState, secrets),
     };
   }
 }

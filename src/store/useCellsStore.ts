@@ -73,7 +73,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
         }));
         storage.save(get().cells.find(c => c.id === id)!);
       },
-      () => get().env
+      () => ({ env: { ...get().env }, secrets: new Set<string>() })
     );
 
     const running = cells.filter(c => c.enabled);
@@ -199,7 +199,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     }));
 
     const ac = new AbortController();
-    executeScript(cell.script, { ...cell.state }, { ...get().env }, ac.signal).then(result => {
+    executeScript(cell.script, { ...cell.state }, { ...get().env }, new Set(), ac.signal).then(result => {
       set(state => ({
         cells: state.cells.map(c =>
           c.id === id
