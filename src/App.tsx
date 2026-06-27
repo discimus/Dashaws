@@ -6,6 +6,7 @@ import { Overview } from './components/Overview';
 import { ScriptsView } from './components/ScriptsView';
 import { EnvView } from './components/EnvView';
 import { SecretsView } from './components/SecretsView';
+import { Toast } from './components/Toast';
 
 export type View = 'overview' | 'scripts' | 'env' | 'secrets';
 
@@ -50,6 +51,7 @@ export default function App() {
           )}
         </main>
       </div>
+      <Toast />
     </div>
   );
 }

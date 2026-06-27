@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
+import { useToastStore } from '../store/toastStore';
 
 export function SecretsView() {
   const {
@@ -209,9 +210,18 @@ export function SecretsView() {
                   {entries.map(([key]) => (
                     <tr key={key} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
                       <td className="py-2.5 px-3">
-                        <code className="text-purple-400 font-mono text-xs bg-gray-700/50 px-1.5 py-0.5 rounded">
-                          {key}
-                        </code>
+                        <div className="flex items-center gap-1.5">
+                          <code className="text-purple-400 font-mono text-xs bg-gray-700/50 px-1.5 py-0.5 rounded">
+                            {key}
+                          </code>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(key); useToastStore.getState().show('Copied!'); }}
+                            title="Copy name"
+                            className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
+                          >
+                            &#128203;
+                          </button>
+                        </div>
                       </td>
                       <td className="py-2.5 px-3">
                         <span className="text-gray-500 font-mono text-xs break-all italic">

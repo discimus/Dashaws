@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
+import { useToastStore } from '../store/toastStore';
 
 export function EnvView() {
   const { env, setEnvVar, deleteEnvVar } = useCellsStore();
@@ -34,6 +35,7 @@ export function EnvView() {
               <tr className="border-b border-gray-600 text-left">
                 <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/3">Key</th>
                 <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Value</th>
+                <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-10"></th>
                 <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16"></th>
               </tr>
             </thead>
@@ -41,12 +43,32 @@ export function EnvView() {
               {entries.map(([key, value]) => (
                 <tr key={key} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
                   <td className="py-2.5 px-3">
-                    <code className="text-blue-400 font-mono text-xs bg-gray-700/50 px-1.5 py-0.5 rounded">
-                      {key}
-                    </code>
+                    <div className="flex items-center gap-1.5">
+                      <code className="text-blue-400 font-mono text-xs bg-gray-700/50 px-1.5 py-0.5 rounded">
+                        {key}
+                      </code>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(key); useToastStore.getState().show('Copied!'); }}
+                        title="Copy name"
+                        className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
+                      >
+                        &#128203;
+                      </button>
+                    </div>
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className="text-gray-300 font-mono text-xs break-all">{value || <span className="text-gray-500 italic">empty</span>}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-300 font-mono text-xs break-all">{value || <span className="text-gray-500 italic">empty</span>}</span>
+                      {value && (
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(value); useToastStore.getState().show('Copied!'); }}
+                          title="Copy value"
+                          className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
+                        >
+                          &#128203;
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="py-2.5 px-3">
                     <button
