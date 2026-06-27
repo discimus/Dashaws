@@ -31,12 +31,13 @@ export async function executeScript(
   cellState: Record<string, unknown>,
   env: Record<string, string>,
   secrets: Set<string>,
+  secretsObj: Record<string, string>,
   signal: AbortSignal
 ): Promise<ExecutionResult> {
   const output: LogEntry[] = [];
   const onLog = (entry: LogEntry) => output.push(entry);
 
-  const globals = createSandboxGlobals(cellState, env, secrets, signal, onLog);
+  const globals = createSandboxGlobals(cellState, env, secrets, secretsObj, signal, onLog);
 
   const blockedNames = Object.keys(BLOCKED_GLOBALS);
   const blockedValues = Object.values(BLOCKED_GLOBALS);

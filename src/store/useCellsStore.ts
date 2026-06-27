@@ -5,6 +5,15 @@ import { generateId } from '../utils/id';
 import { Scheduler } from '../sandbox/scheduler';
 import { executeScript } from '../sandbox/executor';
 import type { ExecutionResult } from '../sandbox/executor';
+import {
+  encryptSecrets,
+  decryptSecrets,
+  hashPassword,
+  loadBlob,
+  saveBlob,
+  clearBlob,
+  type EncryptedBlob,
+} from '../crypto/secrets';
 
 const storage = new LocalStorageBackend();
 const ENV_STORAGE_KEY = 'script-dashboard-env';
@@ -24,11 +33,24 @@ function saveEnv(env: Record<string, string>): void {
   localStorage.setItem(ENV_STORAGE_KEY, JSON.stringify(env));
 }
 
+function secretsMaskSet(values: Record<string, string>): Set<string> {
+  const s = new Set<string>();
+  for (const v of Object.values(values)) {
+    if (v) s.add(v);
+  }
+  return s;
+}
+
+let cachedSecretsPassword: string | null = null;
+
 interface CellsState {
   cells: Cell[];
   loaded: boolean;
   runningIds: string[];
   env: Record<string, string>;
+  secretsLocked: boolean;
+  secrets: Record<string, string>;
+  secretsBlob: EncryptedBlob | null;
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -42,6 +64,13 @@ interface CellsState {
   clearOutput: (id: string) => void;
   setEnvVar: (key: string, value: string) => void;
   deleteEnvVar: (key: string) => void;
+
+  tryUnlockSecrets: (password: string) => Promise<boolean>;
+  lockSecrets: () => void;
+  setSecret: (key: string, value: string) => Promise<void>;
+  deleteSecret: (key: string) => Promise<void>;
+  setSecretsPassword: (password: string) => Promise<void>;
+  removeSecretsPassword: () => Promise<void>;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
@@ -49,10 +78,14 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   loaded: false,
   runningIds: [],
   env: {},
+  secretsLocked: true,
+  secrets: {},
+  secretsBlob: null,
 
   init: async () => {
     const cells = await storage.list();
     const env = loadEnv();
+    const blob = loadBlob();
 
     scheduler = new Scheduler(
       (id) => get().cells.find(c => c.id === id),
@@ -71,9 +104,17 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
               : c
           ),
         }));
-        storage.save(get().cells.find(c => c.id === id)!);
+        const updated = get().cells.find(c => c.id === id);
+        if (updated) storage.save(updated);
       },
-      () => ({ env: { ...get().env }, secrets: new Set<string>() })
+      () => {
+        const state = get();
+        return {
+          env: { ...state.env },
+          secrets: secretsMaskSet(state.secrets),
+          secretsObj: { ...state.secrets },
+        };
+      }
     );
 
     const running = cells.filter(c => c.enabled);
@@ -83,6 +124,8 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       cells,
       loaded: true,
       env,
+      secretsLocked: blob !== null,
+      secretsBlob: blob,
       runningIds: running.map(c => c.id),
     });
   },
@@ -92,7 +135,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Cell ${get().cells.length + 1}`,
-      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n`,
+      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n`,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,
@@ -199,7 +242,15 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     }));
 
     const ac = new AbortController();
-    executeScript(cell.script, { ...cell.state }, { ...get().env }, new Set(), ac.signal).then(result => {
+    const state = get();
+    executeScript(
+      cell.script,
+      { ...cell.state },
+      { ...state.env },
+      secretsMaskSet(state.secrets),
+      { ...state.secrets },
+      ac.signal
+    ).then(result => {
       set(state => ({
         cells: state.cells.map(c =>
           c.id === id
@@ -245,5 +296,66 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       saveEnv(env);
       return { env };
     });
+  },
+
+  tryUnlockSecrets: async (password) => {
+    const blob = get().secretsBlob;
+    if (!blob) return false;
+
+    try {
+      const currentHash = await hashPassword(password);
+      if (currentHash !== blob.hash) return false;
+
+      const values = await decryptSecrets(blob, password);
+      cachedSecretsPassword = password;
+      set({ secretsLocked: false, secrets: values });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  lockSecrets: () => {
+    cachedSecretsPassword = null;
+    set({ secretsLocked: true, secrets: {} });
+  },
+
+  setSecret: async (key, value) => {
+    const state = get();
+    if (state.secretsLocked) return;
+
+    const newValues = { ...state.secrets, [key]: value };
+    const pw = cachedSecretsPassword;
+    if (!pw) return;
+
+    const blob = await encryptSecrets(newValues, pw);
+    saveBlob(blob);
+    set({ secrets: newValues, secretsBlob: blob });
+  },
+
+  deleteSecret: async (key) => {
+    const state = get();
+    if (state.secretsLocked) return;
+
+    const { [key]: _, ...newValues } = state.secrets;
+    const pw = cachedSecretsPassword;
+    if (!pw) return;
+
+    const blob = await encryptSecrets(newValues, pw);
+    saveBlob(blob);
+    set({ secrets: newValues, secretsBlob: blob });
+  },
+
+  setSecretsPassword: async (password) => {
+    const blob = await encryptSecrets({}, password);
+    saveBlob(blob);
+    cachedSecretsPassword = password;
+    set({ secretsLocked: false, secrets: {}, secretsBlob: blob });
+  },
+
+  removeSecretsPassword: async () => {
+    clearBlob();
+    cachedSecretsPassword = null;
+    set({ secretsLocked: true, secrets: {}, secretsBlob: null });
   },
 }));

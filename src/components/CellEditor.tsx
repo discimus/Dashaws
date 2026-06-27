@@ -38,6 +38,32 @@ function envCompletionSource(context: CompletionContext) {
   };
 }
 
+function secretsCompletionSource(context: CompletionContext) {
+  const before = context.matchBefore(/\$secrets\.(\w*)$/);
+  if (!before) return null;
+
+  const partial = before.text.slice(9); // strip "$secrets."
+  const secrets = useCellsStore.getState().secrets;
+  const entries = Object.entries(secrets);
+
+  if (entries.length === 0) return null;
+
+  const options = entries
+    .filter(([key]) => partial === '' || key.toLowerCase().startsWith(partial.toLowerCase()))
+    .map(([key]) => ({
+      label: `$secrets.${key}`,
+      type: 'property' as const,
+      detail: '\u2022'.repeat(18),
+      apply: `$secrets.${key}`,
+    }));
+
+  return {
+    from: before.from,
+    options,
+    validFor: (text: string) => /^\$secrets\.(\w*)$/.test(text),
+  };
+}
+
 export function CellEditor({ cell }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -58,7 +84,7 @@ export function CellEditor({ cell }: Props) {
       }
     });
 
-    const envCompletion = autocompletion({ override: [envCompletionSource] });
+    const envCompletion = autocompletion({ override: [envCompletionSource, secretsCompletionSource] });
     const tabAccept = Prec.high(keymap.of([{ key: 'Tab', run: acceptCompletion }]));
 
     const view = new EditorView({

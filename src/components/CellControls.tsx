@@ -19,13 +19,17 @@ const INTERVAL_PRESETS = [
 ];
 
 export function CellControls({ cell }: Props) {
-  const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds } =
+  const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked } =
     useCellsStore();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState(cell.name);
   const isRunning = runningIds.includes(cell.id);
 
+  const usesSecrets = /\$secrets\./.test(cell.script);
+  const blocked = usesSecrets && secretsLocked;
+
   const toggleRun = () => {
+    if (blocked) return;
     if (isRunning) {
       stopCell(cell.id);
     } else {
@@ -118,9 +122,12 @@ export function CellControls({ cell }: Props) {
       <div className="flex items-center gap-1 ml-auto">
         <button
           onClick={toggleRun}
-          title={isRunning ? 'Stop' : 'Start'}
+          title={blocked ? 'Secrets locked — unlock to run' : isRunning ? 'Stop' : 'Start'}
+          disabled={blocked}
           className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-            isRunning
+            blocked
+              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              : isRunning
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-green-600 hover:bg-green-700 text-white'
           }`}
@@ -130,9 +137,14 @@ export function CellControls({ cell }: Props) {
 
         {!isRunning && (
           <button
-            onClick={() => runOnce(cell.id)}
-            title="Run once"
-            className="px-2.5 py-1 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            onClick={() => { if (!blocked) runOnce(cell.id); }}
+            title={blocked ? 'Secrets locked — unlock to run' : 'Run once'}
+            disabled={blocked}
+            className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+              blocked
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
             Run
           </button>

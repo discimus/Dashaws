@@ -9,7 +9,8 @@ interface Props {
 }
 
 export function Sidebar({ view, onViewChange, onEditCell }: Props) {
-  const { cells, addCell, runningIds } = useCellsStore();
+  const { cells, addCell, runningIds, secretsLocked, secretsBlob } = useCellsStore();
+  const hasSecrets = secretsBlob !== null;
 
   return (
     <aside className="flex-shrink-0 w-64 bg-gray-900 border-r border-gray-700 flex flex-col min-h-0">
@@ -28,6 +29,11 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           active={view === 'env'}
           onClick={() => onViewChange('env')}
           label="Environment"
+        />
+        <SidebarLink
+          active={view === 'secrets'}
+          onClick={() => onViewChange('secrets')}
+          label={`Secrets ${hasSecrets ? (secretsLocked ? '🔒' : '🔓') : ''}`}
         />
       </nav>
 

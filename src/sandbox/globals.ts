@@ -13,6 +13,7 @@ export interface SandboxGlobals {
   };
   $state: Record<string, unknown>;
   $env: Record<string, string>;
+  $secrets: Record<string, string>;
   signal: AbortSignal;
   Math: typeof Math;
   Date: typeof Date;
@@ -86,6 +87,7 @@ export function createSandboxGlobals(
   cellState: Record<string, unknown>,
   env: Record<string, string>,
   secrets: Set<string>,
+  secretsObj: Record<string, string>,
   signal: AbortSignal,
   onLog: (entry: LogEntry) => void
 ): SandboxGlobals {
@@ -112,6 +114,7 @@ export function createSandboxGlobals(
     console: consoleProxy,
     $state: cellState,
     $env: { ...env },
+    $secrets: { ...secretsObj },
     signal,
     Math,
     Date,

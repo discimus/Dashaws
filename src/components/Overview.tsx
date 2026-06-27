@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function Overview({ onEditCell }: Props) {
-  const { cells, addCell, startCell, stopCell, runOnce, clearOutput, runningIds } = useCellsStore();
+  const { cells, addCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked } = useCellsStore();
 
   if (cells.length === 0) {
     return (
@@ -48,6 +48,7 @@ export function Overview({ onEditCell }: Props) {
             key={cell.id}
             cell={cell}
             isRunning={runningIds.includes(cell.id)}
+            blocked={/\$secrets\./.test(cell.script) && secretsLocked}
             onEdit={() => onEditCell(cell.id)}
             onStart={() => startCell(cell.id)}
             onStop={() => stopCell(cell.id)}
@@ -72,6 +73,7 @@ function StatBox({ label, value, color }: { label: string; value: number; color:
 interface CardProps {
   cell: Cell;
   isRunning: boolean;
+  blocked: boolean;
   onEdit: () => void;
   onStart: () => void;
   onStop: () => void;
@@ -79,7 +81,7 @@ interface CardProps {
   onClear: () => void;
 }
 
-function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onClear }: CardProps) {
+function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRunOnce, onClear }: CardProps) {
   const lastOutputs = cell.output.slice(-4);
 
   return (
@@ -153,16 +155,28 @@ function OverviewCard({ cell, isRunning, onEdit, onStart, onStop, onRunOnce, onC
           </button>
         ) : (
           <button
-            onClick={onStart}
-            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-green-600/80 hover:bg-green-600 text-white transition-colors"
+            onClick={blocked ? undefined : onStart}
+            title={blocked ? 'Secrets locked — unlock to run' : 'Start'}
+            disabled={blocked}
+            className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${
+              blocked
+                ? 'bg-gray-600 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600/80 hover:bg-green-600 text-white'
+            }`}
           >
             Start
           </button>
         )}
         {!isRunning && (
           <button
-            onClick={onRunOnce}
-            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+            onClick={blocked ? undefined : onRunOnce}
+            title={blocked ? 'Secrets locked — unlock to run' : 'Run once'}
+            disabled={blocked}
+            className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${
+              blocked
+                ? 'bg-gray-600 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600/60 hover:bg-blue-600 text-white'
+            }`}
           >
             Run
           </button>

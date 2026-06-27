@@ -3,7 +3,11 @@ import type { ExecutionResult } from './executor';
 import { executeScript } from './executor';
 
 type GetCell = (id: string) => Cell | undefined;
-type GetEnv = () => { env: Record<string, string>; secrets: Set<string> };
+type GetEnv = () => {
+  env: Record<string, string>;
+  secrets: Set<string>;
+  secretsObj: Record<string, string>;
+};
 type OnResult = (id: string, result: ExecutionResult) => void;
 
 export class Scheduler {
@@ -30,12 +34,13 @@ export class Scheduler {
       this.controllers.set(cellId, ac);
 
       try {
-        const { env, secrets } = this.getEnv();
+        const { env, secrets, secretsObj } = this.getEnv();
         const result = await executeScript(
           cell.script,
           { ...cell.state },
           env,
           secrets,
+          secretsObj,
           ac.signal
         );
         this.onResult(cellId, result);

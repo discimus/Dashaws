@@ -5,8 +5,9 @@ import { Sidebar } from './components/Sidebar';
 import { Overview } from './components/Overview';
 import { ScriptsView } from './components/ScriptsView';
 import { EnvView } from './components/EnvView';
+import { SecretsView } from './components/SecretsView';
 
-export type View = 'overview' | 'scripts' | 'env';
+export type View = 'overview' | 'scripts' | 'env' | 'secrets';
 
 export default function App() {
   const { loaded, init } = useCellsStore();
@@ -42,8 +43,10 @@ export default function App() {
             <Overview onEditCell={navigateToEditor} />
           ) : view === 'scripts' ? (
             <ScriptsView focusCellId={focusCellId} onFocusHandled={() => setFocusCellId(null)} />
-          ) : (
+          ) : view === 'env' ? (
             <EnvView />
+          ) : (
+            <SecretsView />
           )}
         </main>
       </div>
