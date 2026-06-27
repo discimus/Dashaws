@@ -4,8 +4,9 @@ import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { Overview } from './components/Overview';
 import { ScriptsView } from './components/ScriptsView';
+import { EnvView } from './components/EnvView';
 
-export type View = 'overview' | 'scripts';
+export type View = 'overview' | 'scripts' | 'env';
 
 export default function App() {
   const { loaded, init } = useCellsStore();
@@ -39,8 +40,10 @@ export default function App() {
         <main className="flex-1 overflow-y-auto px-4 pb-4 bg-gray-800">
           {view === 'overview' ? (
             <Overview onEditCell={navigateToEditor} />
-          ) : (
+          ) : view === 'scripts' ? (
             <ScriptsView focusCellId={focusCellId} onFocusHandled={() => setFocusCellId(null)} />
+          ) : (
+            <EnvView />
           )}
         </main>
       </div>

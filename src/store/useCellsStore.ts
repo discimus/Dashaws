@@ -7,13 +7,28 @@ import { executeScript } from '../sandbox/executor';
 import type { ExecutionResult } from '../sandbox/executor';
 
 const storage = new LocalStorageBackend();
+const ENV_STORAGE_KEY = 'script-dashboard-env';
 
 let scheduler: Scheduler | null = null;
+
+function loadEnv(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(ENV_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEnv(env: Record<string, string>): void {
+  localStorage.setItem(ENV_STORAGE_KEY, JSON.stringify(env));
+}
 
 interface CellsState {
   cells: Cell[];
   loaded: boolean;
   runningIds: string[];
+  env: Record<string, string>;
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -25,15 +40,19 @@ interface CellsState {
   stopAll: () => void;
   runOnce: (id: string) => void;
   clearOutput: (id: string) => void;
+  setEnvVar: (key: string, value: string) => void;
+  deleteEnvVar: (key: string) => void;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
   cells: [],
   loaded: false,
   runningIds: [],
+  env: {},
 
   init: async () => {
     const cells = await storage.list();
+    const env = loadEnv();
 
     scheduler = new Scheduler(
       (id) => get().cells.find(c => c.id === id),
@@ -53,7 +72,8 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
           ),
         }));
         storage.save(get().cells.find(c => c.id === id)!);
-      }
+      },
+      () => get().env
     );
 
     const running = cells.filter(c => c.enabled);
@@ -62,6 +82,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     set({
       cells,
       loaded: true,
+      env,
       runningIds: running.map(c => c.id),
     });
   },
@@ -71,7 +92,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Cell ${get().cells.length + 1}`,
-      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example:\n// const res = await fetch("https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n`,
+      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the cell!");\n\n// Example:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n`,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,
@@ -178,7 +199,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     }));
 
     const ac = new AbortController();
-    executeScript(cell.script, { ...cell.state }, {}, ac.signal).then(result => {
+    executeScript(cell.script, { ...cell.state }, { ...get().env }, ac.signal).then(result => {
       set(state => ({
         cells: state.cells.map(c =>
           c.id === id
@@ -208,5 +229,21 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     if (cell) {
       storage.save(cell);
     }
+  },
+
+  setEnvVar: (key, value) => {
+    set(state => {
+      const env = { ...state.env, [key]: value };
+      saveEnv(env);
+      return { env };
+    });
+  },
+
+  deleteEnvVar: (key) => {
+    set(state => {
+      const { [key]: _, ...env } = state.env;
+      saveEnv(env);
+      return { env };
+    });
   },
 }));

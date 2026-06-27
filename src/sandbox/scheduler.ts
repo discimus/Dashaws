@@ -3,18 +3,20 @@ import type { ExecutionResult } from './executor';
 import { executeScript } from './executor';
 
 type GetCell = (id: string) => Cell | undefined;
+type GetEnv = () => Record<string, string>;
 type OnResult = (id: string, result: ExecutionResult) => void;
 
 export class Scheduler {
   private intervals = new Map<string, ReturnType<typeof setInterval>>();
   private controllers = new Map<string, AbortController>();
-  private env: Record<string, string> = {};
+  private getEnv: GetEnv;
   private getCell: GetCell;
   private onResult: OnResult;
 
-  constructor(getCell: GetCell, onResult: OnResult) {
+  constructor(getCell: GetCell, onResult: OnResult, getEnv: GetEnv) {
     this.getCell = getCell;
     this.onResult = onResult;
+    this.getEnv = getEnv;
   }
 
   start(cellId: string): void {
@@ -31,7 +33,7 @@ export class Scheduler {
         const result = await executeScript(
           cell.script,
           { ...cell.state },
-          this.env,
+          this.getEnv(),
           ac.signal
         );
         this.onResult(cellId, result);

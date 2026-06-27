@@ -24,6 +24,11 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           onClick={() => onViewChange('scripts')}
           label="Scripts"
         />
+        <SidebarLink
+          active={view === 'env'}
+          onClick={() => onViewChange('env')}
+          label="Environment"
+        />
       </nav>
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />
@@ -86,7 +91,7 @@ function SidebarLink({ active, onClick, label }: { active: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-        className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors ${
+      className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors ${
         active
           ? 'bg-gray-700 text-white'
           : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
