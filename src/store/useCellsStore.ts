@@ -42,6 +42,40 @@ function secretsMaskSet(values: Record<string, string>): Set<string> {
 }
 
 let cachedSecretsPassword: string | null = null;
+const UNLOCKED_KEY = 'script-dashboard-keep-unlocked';
+const SESSION_PW_KEY = 'script-dashboard-session-pw';
+
+function loadKeepUnlocked(): boolean {
+  try {
+    return localStorage.getItem(UNLOCKED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveKeepUnlocked(v: boolean): void {
+  localStorage.setItem(UNLOCKED_KEY, v ? '1' : '0');
+}
+
+function saveSessionPassword(pw: string): void {
+  try {
+    sessionStorage.setItem(SESSION_PW_KEY, pw);
+  } catch { /* noop */ }
+}
+
+function loadSessionPassword(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_PW_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function clearSessionPassword(): void {
+  try {
+    sessionStorage.removeItem(SESSION_PW_KEY);
+  } catch { /* noop */ }
+}
 
 interface CellsState {
   cells: Cell[];
@@ -51,6 +85,7 @@ interface CellsState {
   secretsLocked: boolean;
   secrets: Record<string, string>;
   secretsBlob: EncryptedBlob | null;
+  keepUnlocked: boolean;
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -71,6 +106,7 @@ interface CellsState {
   deleteSecret: (key: string) => Promise<void>;
   setSecretsPassword: (password: string) => Promise<void>;
   removeSecretsPassword: () => Promise<void>;
+  toggleKeepUnlocked: () => void;
 }
 
 export const useCellsStore = create<CellsState>()((set, get) => ({
@@ -81,6 +117,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   secretsLocked: false,
   secrets: {},
   secretsBlob: null,
+  keepUnlocked: loadKeepUnlocked(),
 
   init: async () => {
     const cells = await storage.list();
@@ -120,11 +157,32 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const running = cells.filter(c => c.enabled);
     running.forEach(c => scheduler?.start(c.id));
 
+    let unlocked = false;
+    let decrypted: Record<string, string> = {};
+
+    // Try auto-unlock via sessionStorage if keepUnlocked is enabled
+    if (blob && loadKeepUnlocked()) {
+      const sessionPw = loadSessionPassword();
+      if (sessionPw) {
+        try {
+          const currentHash = await hashPassword(sessionPw);
+          if (currentHash === blob.hash) {
+            decrypted = await decryptSecrets(blob, sessionPw);
+            cachedSecretsPassword = sessionPw;
+            unlocked = true;
+          }
+        } catch {
+          clearSessionPassword();
+        }
+      }
+    }
+
     set({
       cells,
       loaded: true,
       env,
-      secretsLocked: blob !== null,
+      secretsLocked: blob !== null && !unlocked,
+      secrets: decrypted,
       secretsBlob: blob,
       runningIds: running.map(c => c.id),
     });
@@ -308,6 +366,9 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
 
       const values = await decryptSecrets(blob, password);
       cachedSecretsPassword = password;
+      if (get().keepUnlocked) {
+        saveSessionPassword(password);
+      }
       set({ secretsLocked: false, secrets: values });
       return true;
     } catch {
@@ -317,6 +378,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
 
   lockSecrets: () => {
     cachedSecretsPassword = null;
+    clearSessionPassword();
     set({ secretsLocked: true, secrets: {} });
   },
 
@@ -350,12 +412,27 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const blob = await encryptSecrets({}, password);
     saveBlob(blob);
     cachedSecretsPassword = password;
+    if (get().keepUnlocked) {
+      saveSessionPassword(password);
+    }
     set({ secretsLocked: false, secrets: {}, secretsBlob: blob });
   },
 
   removeSecretsPassword: async () => {
     clearBlob();
     cachedSecretsPassword = null;
+    clearSessionPassword();
     set({ secretsLocked: true, secrets: {}, secretsBlob: null });
+  },
+
+  toggleKeepUnlocked: () => {
+    const next = !get().keepUnlocked;
+    saveKeepUnlocked(next);
+    if (!next) {
+      clearSessionPassword();
+    } else if (cachedSecretsPassword) {
+      saveSessionPassword(cachedSecretsPassword);
+    }
+    set({ keepUnlocked: next });
   },
 }));
