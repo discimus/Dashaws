@@ -12,8 +12,8 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
   const { cells, addCell, runningIds } = useCellsStore();
 
   return (
-    <aside className="flex-shrink-0 w-56 bg-gray-950 border-r border-gray-800 flex flex-col min-h-0">
-      <nav className="flex-shrink-0 p-3 space-y-1">
+    <aside className="flex-shrink-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col min-h-0">
+      <nav className="flex-shrink-0 p-3 space-y-1.5">
         <SidebarLink
           active={view === 'overview'}
           onClick={() => onViewChange('overview')}
@@ -28,7 +28,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-800" />
 
-      <div className="flex-shrink-0 px-3 py-1.5">
+      <div className="flex-shrink-0 px-3 py-2">
         <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
           Cells
         </span>
@@ -41,7 +41,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
             <button
               key={cell.id}
               onClick={() => onEditCell(cell.id)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors ${
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors ${
                 view === 'scripts' && cell.status === 'running'
                   ? 'bg-gray-800/80 text-gray-200'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
@@ -49,7 +49,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
               title={`${cell.name}\n${cell.status} · ${cell.lastRunAt ? formatTimeAgo(cell.lastRunAt) : 'Not run'}`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${
                   isRunning
                     ? 'bg-yellow-400 animate-pulse'
                     : cell.status === 'success'
@@ -70,10 +70,10 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
         })}
       </div>
 
-      <div className="flex-shrink-0 p-2 border-t border-gray-800">
+      <div className="flex-shrink-0 p-3 border-t border-gray-800">
         <button
           onClick={addCell}
-          className="w-full px-2 py-1.5 rounded text-xs font-medium bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+          className="w-full px-3 py-2 rounded text-sm font-medium bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
         >
           + Add Cell
         </button>
@@ -86,7 +86,7 @@ function SidebarLink({ active, onClick, label }: { active: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
         active
           ? 'bg-gray-800 text-white'
           : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
