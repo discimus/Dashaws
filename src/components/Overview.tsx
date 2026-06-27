@@ -204,10 +204,10 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
         ) : (
           <button
             onClick={handleStart}
-            title={blocked ? 'Secrets locked — click to unlock' : 'Start'}
+            title={blocked ? 'Secrets locked — click to unlock' : 'Loop'}
             className="px-2.5 py-1 rounded text-[10px] font-semibold bg-green-600/80 hover:bg-green-600 text-white transition-colors"
           >
-            {blocked && '\u{1F512} '}Start
+            {blocked && '\u{1F512} '}Loop
           </button>
         )}
         {!isRunning && (
@@ -216,7 +216,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
             title={blocked ? 'Secrets locked — click to unlock' : 'Run once'}
             className="px-2.5 py-1 rounded text-[10px] font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
           >
-            {blocked && '\u{1F512} '}Run
+            {blocked && '\u{1F512} '}Run once
           </button>
         )}
         <div className="flex-1" />

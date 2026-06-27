@@ -104,7 +104,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2">
       {/* Name */}
       {isEditingName ? (
         <input
@@ -124,7 +124,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
         />
       ) : (
         <span
-          className="text-sm font-medium cursor-pointer hover:text-blue-400"
+          className="text-sm font-medium cursor-pointer hover:text-blue-400 flex-shrink-0"
           onClick={() => {
             setEditingName(cell.name);
             setIsEditingName(true);
@@ -135,8 +135,8 @@ export function CellControls({ cell, onToggleParams }: Props) {
         </span>
       )}
 
-      {/* Interval */}
-      <div className="flex items-center gap-1">
+      {/* Actions */}
+      <div className="flex-1 flex items-center justify-center gap-1">
         <select
           value={cell.intervalMs}
           onChange={e => updateCell(cell.id, { intervalMs: Number(e.target.value) })}
@@ -148,68 +148,64 @@ export function CellControls({ cell, onToggleParams }: Props) {
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Status Badge */}
-      <span
-        className={`inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider ${
-          cell.status === 'running'
-            ? 'text-yellow-400'
-            : cell.status === 'success'
-            ? 'text-green-400'
-            : cell.status === 'error'
-            ? 'text-red-400'
-            : 'text-gray-400'
-        }`}
-      >
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${
-            cell.status === 'running'
-              ? 'bg-yellow-400 animate-pulse'
-              : cell.status === 'success'
-              ? 'bg-green-400'
-              : cell.status === 'error'
-              ? 'bg-red-400'
-              : 'bg-gray-500'
-          }`}
-        />
-        {cell.status}
-      </span>
-
-      {/* Params */}
-      <button
-        onClick={onToggleParams}
-        className={`text-[10px] font-medium transition-colors ${
-          parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
-        }`}
-        title="Edit parameters ($props)"
-      >
-        {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
-      </button>
-
-      {/* Buttons */}
-      <div className="flex items-center gap-1 ml-auto">
         <button
           onClick={handleStart}
-          title={blocked ? 'Secrets locked — click to unlock' : isRunning ? 'Stop' : 'Start'}
-          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+          title={blocked ? 'Secrets locked — click to unlock' : isRunning ? 'Stop' : 'Loop'}
+          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
             isRunning
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-green-600 hover:bg-green-700 text-white'
           }`}
         >
-          {isRunning ? 'Stop' : <>{blocked && '\u{1F512} '}Start</>}
+          {isRunning ? 'Stop' : <>{blocked && '\u{1F512} '}Loop</>}
         </button>
-
         {!isRunning && (
           <button
             onClick={handleRun}
             title={blocked ? 'Secrets locked — click to unlock' : 'Run once'}
-            className="px-2.5 py-1 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
           >
-            {blocked && '\u{1F512} '}Run
+            {blocked && '\u{1F512} '}Run once
           </button>
         )}
+      </div>
+
+      {/* Right side: params, status, menu */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={onToggleParams}
+          className={`text-[10px] font-medium transition-colors ${
+            parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
+          }`}
+          title="Edit parameters ($props)"
+        >
+          {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
+        </button>
+
+        <span
+          className={`inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider ${
+            cell.status === 'running'
+              ? 'text-yellow-400'
+              : cell.status === 'success'
+              ? 'text-green-400'
+              : cell.status === 'error'
+              ? 'text-red-400'
+              : 'text-gray-400'
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              cell.status === 'running'
+                ? 'bg-yellow-400 animate-pulse'
+                : cell.status === 'success'
+                ? 'bg-green-400'
+                : cell.status === 'error'
+                ? 'bg-red-400'
+                : 'bg-gray-500'
+            }`}
+          />
+          {cell.status}
+        </span>
 
         <div ref={menuRef} className="relative">
           <button
