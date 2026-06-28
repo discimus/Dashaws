@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { serverEnv, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage } from './state.js';
+import { serverEnv, serverSecrets, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage } from './state.js';
 import type { Cell } from '../../src/types/cell.js';
 
 export function createApiRouter(): Router {
@@ -70,6 +70,15 @@ export function createApiRouter(): Router {
     for (const k of Object.keys(serverEnv)) { if (!(k in req.body)) delete serverEnv[k]; }
     savePersistedState();
     res.json(serverEnv);
+  });
+
+  router.get('/secrets', (_req: Request, res: Response) => res.json(serverSecrets));
+
+  router.put('/secrets', (req: Request, res: Response) => {
+    Object.assign(serverSecrets, req.body);
+    for (const k of Object.keys(serverSecrets)) { if (!(k in req.body)) delete serverSecrets[k]; }
+    savePersistedState();
+    res.json(serverSecrets);
   });
 
   router.get('/queues', (_req: Request, res: Response) => res.json(serverQueues));

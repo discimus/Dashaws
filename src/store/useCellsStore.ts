@@ -256,6 +256,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     let queues: Record<string, Queue>;
     let eventTopics: Record<string, EventTopic>;
     let crons: CronEntry[];
+    let serverSecrets: Record<string, string> | null = null;
 
     if (isServerMode && apiClient) {
       cells = await apiClient.list();
@@ -264,6 +265,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       eventTopics = await apiClient.getTopics();
       crons = await apiClient.getCrons();
       startServerPolling();
+      try { serverSecrets = await apiClient.getSecrets(); } catch { /* ignore */ }
     } else {
       cells = await storage.list();
       env = loadEnv();
@@ -312,8 +314,11 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     let unlocked = false;
     let decrypted: Record<string, string> = {};
 
-    // Try auto-unlock via sessionStorage if keepUnlocked is enabled
-    if (blob && loadKeepUnlocked()) {
+    if (isServerMode && serverSecrets && Object.keys(serverSecrets).length > 0) {
+      // Server has secrets — authoritative source, treat as unlocked
+      decrypted = serverSecrets;
+      unlocked = true;
+    } else if (blob && loadKeepUnlocked()) {
       const sessionPw = loadSessionPassword();
       if (sessionPw) {
         try {
@@ -322,6 +327,10 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
             decrypted = await decryptSecrets(blob, sessionPw);
             cachedSecretsPassword = sessionPw;
             unlocked = true;
+            // Bootstrap: server didn't have secrets, sync now
+            if (isServerMode && apiClient) {
+              apiClient.saveSecrets(decrypted);
+            }
           }
         } catch {
           clearSessionPassword();
@@ -602,6 +611,10 @@ console.log("Run count:", $state.counter);
         saveSessionPassword(password);
       }
       set({ secretsLocked: false, secrets: values });
+      // Sync to server so background crons can access $secrets
+      if (isServerMode && apiClient) {
+        apiClient.saveSecrets(values);
+      }
       return true;
     } catch {
       return false;
@@ -625,6 +638,9 @@ console.log("Run count:", $state.counter);
     const blob = await encryptSecrets(newValues, pw);
     saveBlob(blob);
     set({ secrets: newValues, secretsBlob: blob });
+    if (isServerMode && apiClient) {
+      apiClient.saveSecrets(newValues);
+    }
   },
 
   deleteSecret: async (key) => {
@@ -638,6 +654,9 @@ console.log("Run count:", $state.counter);
     const blob = await encryptSecrets(newValues, pw);
     saveBlob(blob);
     set({ secrets: newValues, secretsBlob: blob });
+    if (isServerMode && apiClient) {
+      apiClient.saveSecrets(newValues);
+    }
   },
 
   setSecretsPassword: async (password) => {
@@ -648,6 +667,9 @@ console.log("Run count:", $state.counter);
       saveSessionPassword(password);
     }
     set({ secretsLocked: false, secrets: {}, secretsBlob: blob });
+    if (isServerMode && apiClient) {
+      apiClient.saveSecrets({});
+    }
   },
 
   removeSecretsPassword: async () => {
@@ -655,6 +677,9 @@ console.log("Run count:", $state.counter);
     cachedSecretsPassword = null;
     clearSessionPassword();
     set({ secretsLocked: true, secrets: {}, secretsBlob: null });
+    if (isServerMode && apiClient) {
+      apiClient.saveSecrets({});
+    }
   },
 
   toggleKeepUnlocked: () => {

@@ -133,4 +133,18 @@ export class ApiClient implements StorageBackend {
       body: JSON.stringify(crons),
     });
   }
+
+  // Secrets
+
+  async getSecrets(): Promise<Record<string, string>> {
+    return this.fetch('/secrets');
+  }
+
+  async saveSecrets(secrets: Record<string, string>): Promise<void> {
+    await this.fetch('/secrets', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(secrets),
+    });
+  }
 }

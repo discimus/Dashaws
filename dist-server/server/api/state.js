@@ -6,6 +6,7 @@ import { parseMessageBody } from '../../src/shared/parse.js';
 const storage = new FileStorageBackend();
 const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
 export let serverEnv = {};
+export let serverSecrets = {};
 export let serverQueues = {};
 export let serverEventTopics = {};
 export let serverCrons = [];
@@ -19,6 +20,12 @@ export function initServerState() {
         const p = join(DATA_DIR, 'env.json');
         if (existsSync(p))
             serverEnv = JSON.parse(readFileSync(p, 'utf-8'));
+    }
+    catch { /* ignore */ }
+    try {
+        const p = join(DATA_DIR, 'secrets.json');
+        if (existsSync(p))
+            serverSecrets = JSON.parse(readFileSync(p, 'utf-8'));
     }
     catch { /* ignore */ }
     try {
@@ -44,6 +51,7 @@ export function savePersistedState() {
     if (!existsSync(DATA_DIR))
         mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(join(DATA_DIR, 'env.json'), JSON.stringify(serverEnv, null, 2));
+    writeFileSync(join(DATA_DIR, 'secrets.json'), JSON.stringify(serverSecrets, null, 2));
     writeFileSync(join(DATA_DIR, 'queues.json'), JSON.stringify(serverQueues, null, 2));
     writeFileSync(join(DATA_DIR, 'topics.json'), JSON.stringify(serverEventTopics, null, 2));
     writeFileSync(join(DATA_DIR, 'crons.json'), JSON.stringify(serverCrons, null, 2));
@@ -95,7 +103,7 @@ export async function initServer() {
             cell.state = result.state;
             await storage.save(cell);
         }
-    }, () => ({ env: { ...serverEnv }, secrets: new Set(), secretsObj: {} }), () => ({ queues: serverQueues, eventTopics: serverEventTopics, crons: serverCrons }), onEmit);
+    }, () => ({ env: { ...serverEnv }, secrets: new Set(Object.values(serverSecrets)), secretsObj: { ...serverSecrets } }), () => ({ queues: serverQueues, eventTopics: serverEventTopics, crons: serverCrons }), onEmit);
     const running = cells.filter(c => c.enabled);
     for (const cell of running) {
         scheduler.start(cell.id);

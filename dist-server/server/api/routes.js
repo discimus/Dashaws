@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { serverEnv, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage } from './state.js';
+import { serverEnv, serverSecrets, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage } from './state.js';
 export function createApiRouter() {
     const router = Router();
     router.get('/health', (_req, res) => {
@@ -66,6 +66,16 @@ export function createApiRouter() {
         }
         savePersistedState();
         res.json(serverEnv);
+    });
+    router.get('/secrets', (_req, res) => res.json(serverSecrets));
+    router.put('/secrets', (req, res) => {
+        Object.assign(serverSecrets, req.body);
+        for (const k of Object.keys(serverSecrets)) {
+            if (!(k in req.body))
+                delete serverSecrets[k];
+        }
+        savePersistedState();
+        res.json(serverSecrets);
     });
     router.get('/queues', (_req, res) => res.json(serverQueues));
     router.put('/queues', (req, res) => {

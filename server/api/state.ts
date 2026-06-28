@@ -9,6 +9,7 @@ const storage = new FileStorageBackend();
 const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
 
 export let serverEnv: Record<string, string> = {};
+export let serverSecrets: Record<string, string> = {};
 export let serverQueues: Record<string, Queue> = {};
 export let serverEventTopics: Record<string, EventTopic> = {};
 export let serverCrons: CronEntry[] = [];
@@ -20,6 +21,7 @@ export function initServerState(): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
   try { const p = join(DATA_DIR, 'env.json'); if (existsSync(p)) serverEnv = JSON.parse(readFileSync(p, 'utf-8')); } catch { /* ignore */ }
+  try { const p = join(DATA_DIR, 'secrets.json'); if (existsSync(p)) serverSecrets = JSON.parse(readFileSync(p, 'utf-8')); } catch { /* ignore */ }
   try { const p = join(DATA_DIR, 'queues.json'); if (existsSync(p)) serverQueues = JSON.parse(readFileSync(p, 'utf-8')); } catch { /* ignore */ }
   try { const p = join(DATA_DIR, 'topics.json'); if (existsSync(p)) serverEventTopics = JSON.parse(readFileSync(p, 'utf-8')); } catch { /* ignore */ }
   try { const p = join(DATA_DIR, 'crons.json'); if (existsSync(p)) serverCrons = JSON.parse(readFileSync(p, 'utf-8')); } catch { /* ignore */ }
@@ -28,6 +30,7 @@ export function initServerState(): void {
 export function savePersistedState(): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(join(DATA_DIR, 'env.json'), JSON.stringify(serverEnv, null, 2));
+  writeFileSync(join(DATA_DIR, 'secrets.json'), JSON.stringify(serverSecrets, null, 2));
   writeFileSync(join(DATA_DIR, 'queues.json'), JSON.stringify(serverQueues, null, 2));
   writeFileSync(join(DATA_DIR, 'topics.json'), JSON.stringify(serverEventTopics, null, 2));
   writeFileSync(join(DATA_DIR, 'crons.json'), JSON.stringify(serverCrons, null, 2));
@@ -82,7 +85,7 @@ export async function initServer(): Promise<void> {
         await storage.save(cell);
       }
     },
-    () => ({ env: { ...serverEnv }, secrets: new Set<string>(), secretsObj: {} }),
+    () => ({ env: { ...serverEnv }, secrets: new Set(Object.values(serverSecrets)), secretsObj: { ...serverSecrets } }),
     () => ({ queues: serverQueues, eventTopics: serverEventTopics, crons: serverCrons }),
     onEmit
   );
