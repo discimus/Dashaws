@@ -1,33 +1,6 @@
-export function maskValue(val, secrets) {
-    if (typeof val === 'string') {
-        let result = val;
-        for (const secret of secrets) {
-            if (secret.length > 0) {
-                while (result.includes(secret)) {
-                    result = result.replace(secret, '\u2022'.repeat(6));
-                }
-            }
-        }
-        return result;
-    }
-    if (Array.isArray(val))
-        return val.map(v => maskValue(v, secrets));
-    if (val !== null && typeof val === 'object') {
-        const masked = {};
-        for (const [k, v] of Object.entries(val)) {
-            masked[k] = maskValue(v, secrets);
-        }
-        return masked;
-    }
-    return val;
-}
-function maskArgs(args, secrets) {
-    if (secrets.size === 0)
-        return args;
-    return args.map(a => maskValue(a, secrets));
-}
+import { createConsoleProxy, createTrackedSetTimeout, createTrackedClearTimeout } from '../../src/shared/globals-factory.js';
 let timerIds = null;
-export function getTimerIds() {
+function getTimerIds() {
     if (!timerIds)
         timerIds = new Set();
     return timerIds;
@@ -41,32 +14,11 @@ export function clearTimerIds() {
 }
 export function createServerSandboxGlobals(cellState, env, secrets, secretsObj, props, cellsApi, signal, onLog) {
     const ids = getTimerIds();
-    const consoleProxy = new Proxy({}, {
-        get(_target, prop) {
-            return (...args) => {
-                const type = prop === 'warn' ? 'warn' :
-                    prop === 'error' ? 'error' :
-                        prop === 'info' ? 'info' :
-                            prop === 'table' ? 'table' : 'log';
-                onLog({ timestamp: Date.now(), type, args: maskArgs(args, secrets) });
-            };
-        },
-    });
+    const consoleProxy = createConsoleProxy(secrets, onLog);
     return {
         fetch: globalThis.fetch.bind(globalThis),
-        setTimeout: (fn, ms, ...args) => {
-            const id = globalThis.setTimeout(() => {
-                ids.delete(id);
-                fn();
-            }, ms, ...args);
-            ids.add(id);
-            return id;
-        },
-        clearTimeout: (id) => {
-            if (id !== undefined)
-                ids.delete(id);
-            globalThis.clearTimeout(id);
-        },
+        setTimeout: createTrackedSetTimeout(ids),
+        clearTimeout: createTrackedClearTimeout(ids),
         console: consoleProxy,
         $state: cellState,
         $env: { ...env },

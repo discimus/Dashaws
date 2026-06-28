@@ -1,38 +1,48 @@
 import type { Cell, QueueMessage, CronEntry, Queue, EventTopic } from '../../src/types/cell.js';
-import type { ExecutionResult, CellsAPI } from './executor.js';
-import { executeScript } from './executor.js';
+import type { ExecutionResult, CellsAPI } from '../../src/shared/types.js';
+import type { ExecutorConfig } from '../../src/shared/executor-core.js';
+import { BaseScheduler, type GetCell, type GetEnv, type OnResult } from '../../src/shared/scheduler-base.js';
+import { parseMessageBody } from '../../src/shared/parse.js';
 import { cronMatches } from '../../src/utils/cron.js';
+import { maskState } from '../../src/shared/mask.js';
+import { createServerSandboxGlobals, clearTimerIds } from './globals.js';
 
-type GetCell = (id: string) => Cell | undefined;
-type GetEnv = () => { env: Record<string, string>; secrets: Set<string>; secretsObj: Record<string, string> };
-type OnResult = (id: string, result: ExecutionResult) => void;
+export type { GetCell, GetEnv, OnResult };
+
 type GetData = () => {
   queues: Record<string, Queue>;
   eventTopics: Record<string, EventTopic>;
   crons: CronEntry[];
 };
-type OnDataChange = () => void;
 
-function parseParams(params: string): Record<string, unknown> {
-  try {
-    const p = JSON.parse(params || '{}');
-    return typeof p === 'object' && p !== null && !Array.isArray(p) ? p : {};
-  } catch { return {}; }
-}
+const BLOCKED_GLOBALS: Record<string, unknown> = {
+  globalThis: undefined,
+  global: undefined,
+  window: undefined,
+  self: undefined,
+  document: undefined,
+  localStorage: undefined,
+  sessionStorage: undefined,
+  require: undefined,
+  module: undefined,
+  exports: undefined,
+  __dirname: undefined,
+  __filename: undefined,
+  process: undefined,
+  Function: undefined,
+};
 
-function parseMessageBody(body: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(body);
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
-  } catch { return { message: body }; }
-}
+const SERVER_CONFIG: ExecutorConfig = {
+  blockedGlobals: BLOCKED_GLOBALS,
+  createGlobals: createServerSandboxGlobals as ExecutorConfig['createGlobals'],
+  maskState,
+  onFinally: clearTimerIds,
+};
 
-export class ServerScheduler {
-  private intervals = new Map<string, ReturnType<typeof setInterval>>();
-  private controllers = new Map<string, AbortController>();
-  private getEnv: GetEnv;
-  private getCell: GetCell;
-  private onResult: OnResult;
+export class ServerScheduler extends BaseScheduler {
+  protected override getCell: GetCell;
+  protected override onResult: OnResult;
+  private getEnvFn: () => GetEnv;
   private getData: GetData;
   private onEmit: (name: string, body: string) => void;
   private cronInterval: ReturnType<typeof setInterval> | null = null;
@@ -40,80 +50,24 @@ export class ServerScheduler {
   constructor(
     getCell: GetCell,
     onResult: OnResult,
-    getEnv: GetEnv,
+    getEnv: () => GetEnv,
     getData: GetData,
     onEmit: (name: string, body: string) => void
   ) {
+    super();
     this.getCell = getCell;
     this.onResult = onResult;
-    this.getEnv = getEnv;
+    this.getEnvFn = getEnv;
     this.getData = getData;
     this.onEmit = onEmit;
   }
 
-  async runOnce(cellId: string, props?: Record<string, unknown>): Promise<ExecutionResult | null> {
-    const cell = this.getCell(cellId);
-    if (!cell) return null;
-
-    const ac = new AbortController();
-    const { env, secrets, secretsObj } = this.getEnv();
-    const resolvedProps = props ?? parseParams(cell.params);
-
-    const result = await executeScript(
-      cell.script, { ...cell.state }, env, secrets, secretsObj,
-      resolvedProps, this.buildCellsAPI(), ac.signal
-    );
-
-    this.onResult(cellId, result);
-    return result;
+  protected override getEnv(): GetEnv {
+    return this.getEnvFn();
   }
 
-  start(cellId: string): void {
-    this.stop(cellId);
-
-    const run = async () => {
-      const cell = this.getCell(cellId);
-      if (!cell) return;
-      const ac = new AbortController();
-      this.controllers.set(cellId, ac);
-      try {
-        const { env, secrets, secretsObj } = this.getEnv();
-        const props = parseParams(cell.params);
-        const result = await executeScript(
-          cell.script, { ...cell.state }, env, secrets, secretsObj,
-          props, this.buildCellsAPI(), ac.signal
-        );
-        this.onResult(cellId, result);
-      } catch { /* errors captured inside */ }
-    };
-
-    run();
-    const cell = this.getCell(cellId);
-    if (cell) {
-      this.intervals.set(cellId, setInterval(run, cell.intervalMs));
-    }
-  }
-
-  stop(cellId: string): void {
-    const ac = this.controllers.get(cellId);
-    ac?.abort();
-    this.controllers.delete(cellId);
-    const id = this.intervals.get(cellId);
-    if (id !== undefined) { clearInterval(id); this.intervals.delete(cellId); }
-  }
-
-  stopAll(): void {
-    for (const id of Array.from(this.intervals.keys())) this.stop(id);
-  }
-
-  restart(cellId: string): void {
-    const cell = this.getCell(cellId);
-    this.stop(cellId);
-    if (cell?.enabled) this.start(cellId);
-  }
-
-  isRunning(cellId: string): boolean {
-    return this.intervals.has(cellId);
+  protected override get executorConfig(): ExecutorConfig {
+    return SERVER_CONFIG;
   }
 
   startQueuePolling(): void {
@@ -173,7 +127,7 @@ export class ServerScheduler {
     this.dispatchCron(cron);
   }
 
-  buildCellsAPI(): CellsAPI {
+  protected override buildCellsAPI(): CellsAPI {
     return {
       run: (id, props) => { this.runOnce(id, props); },
       start: (id) => {

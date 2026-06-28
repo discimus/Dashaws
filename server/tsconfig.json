@@ -15,6 +15,16 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["./**/*.ts", "../src/types/**/*.ts", "../src/utils/**/*.ts"],
+  "include": [
+    "./**/*.ts",
+    "../src/types/**/*.ts",
+    "../src/utils/**/*.ts",
+    "../src/shared/mask.ts",
+    "../src/shared/parse.ts",
+    "../src/shared/types.ts",
+    "../src/shared/globals-factory.ts",
+    "../src/shared/executor-core.ts",
+    "../src/shared/scheduler-base.ts"
+  ],
   "exclude": ["../node_modules"]
 }

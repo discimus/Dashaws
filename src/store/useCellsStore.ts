@@ -5,6 +5,7 @@ import { generateId } from '../utils/id';
 import { cronMatches } from '../utils/cron';
 import { Scheduler } from '../sandbox/scheduler';
 import type { ExecutionResult } from '../sandbox/executor';
+import { parseMessageBody } from '../shared/parse';
 import {
   encryptSecrets,
   decryptSecrets,
@@ -733,15 +734,6 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     });
   },
 }));
-
-function parseMessageBody(body: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(body);
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
-  } catch {
-    return { message: body };
-  }
-}
 
 function dispatchCron(cron: CronEntry, state: ReturnType<typeof useCellsStore.getState>): void {
   const props = parseMessageBody(cron.payload);

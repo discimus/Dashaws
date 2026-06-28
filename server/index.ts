@@ -8,6 +8,7 @@ import { initServerState, serverQueues, serverEventTopics, serverCrons, serverEn
 import { FileStorageBackend } from './storage/file-storage.js';
 import { ServerScheduler } from './sandbox/scheduler.js';
 import type { Cell } from '../src/types/cell.js';
+import { parseMessageBody } from '../src/shared/parse.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,13 +19,6 @@ initServerState();
 const storage = new FileStorageBackend();
 let cells: Cell[] = [];
 let scheduler: ServerScheduler | null = null;
-
-function parseMessageBody(body: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(body);
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
-  } catch { return { message: body }; }
-}
 
 async function initScheduler(): Promise<void> {
   cells = await storage.list();
@@ -75,11 +69,15 @@ const apiRouter = createApiRouter((name, body) => {
 });
 app.use('/api', apiRouter);
 
-const distPath = join(__dirname, '..', '..', 'dist');
+const distPath = join(process.cwd(), 'dist');
 if (existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.use((_req, res, next) => {
+  app.use((_req, res) => {
     res.sendFile(join(distPath, 'index.html'));
+  });
+} else {
+  app.get('/', (_req, res) => {
+    res.json({ message: 'SPA not built. Run: npm run build:all' });
   });
 }
 

@@ -1,94 +1,50 @@
-import { executeScript } from './executor.js';
+import { BaseScheduler } from '../../src/shared/scheduler-base.js';
+import { parseMessageBody } from '../../src/shared/parse.js';
 import { cronMatches } from '../../src/utils/cron.js';
-function parseParams(params) {
-    try {
-        const p = JSON.parse(params || '{}');
-        return typeof p === 'object' && p !== null && !Array.isArray(p) ? p : {};
-    }
-    catch {
-        return {};
-    }
-}
-function parseMessageBody(body) {
-    try {
-        const parsed = JSON.parse(body);
-        return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : { message: body };
-    }
-    catch {
-        return { message: body };
-    }
-}
-export class ServerScheduler {
-    intervals = new Map();
-    controllers = new Map();
-    getEnv;
+import { maskState } from '../../src/shared/mask.js';
+import { createServerSandboxGlobals, clearTimerIds } from './globals.js';
+const BLOCKED_GLOBALS = {
+    globalThis: undefined,
+    global: undefined,
+    window: undefined,
+    self: undefined,
+    document: undefined,
+    localStorage: undefined,
+    sessionStorage: undefined,
+    require: undefined,
+    module: undefined,
+    exports: undefined,
+    __dirname: undefined,
+    __filename: undefined,
+    process: undefined,
+    Function: undefined,
+};
+const SERVER_CONFIG = {
+    blockedGlobals: BLOCKED_GLOBALS,
+    createGlobals: createServerSandboxGlobals,
+    maskState,
+    onFinally: clearTimerIds,
+};
+export class ServerScheduler extends BaseScheduler {
     getCell;
     onResult;
+    getEnvFn;
     getData;
     onEmit;
     cronInterval = null;
     constructor(getCell, onResult, getEnv, getData, onEmit) {
+        super();
         this.getCell = getCell;
         this.onResult = onResult;
-        this.getEnv = getEnv;
+        this.getEnvFn = getEnv;
         this.getData = getData;
         this.onEmit = onEmit;
     }
-    async runOnce(cellId, props) {
-        const cell = this.getCell(cellId);
-        if (!cell)
-            return null;
-        const ac = new AbortController();
-        const { env, secrets, secretsObj } = this.getEnv();
-        const resolvedProps = props ?? parseParams(cell.params);
-        const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, resolvedProps, this.buildCellsAPI(), ac.signal);
-        this.onResult(cellId, result);
-        return result;
+    getEnv() {
+        return this.getEnvFn();
     }
-    start(cellId) {
-        this.stop(cellId);
-        const run = async () => {
-            const cell = this.getCell(cellId);
-            if (!cell)
-                return;
-            const ac = new AbortController();
-            this.controllers.set(cellId, ac);
-            try {
-                const { env, secrets, secretsObj } = this.getEnv();
-                const props = parseParams(cell.params);
-                const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, props, this.buildCellsAPI(), ac.signal);
-                this.onResult(cellId, result);
-            }
-            catch { /* errors captured inside */ }
-        };
-        run();
-        const cell = this.getCell(cellId);
-        if (cell) {
-            this.intervals.set(cellId, setInterval(run, cell.intervalMs));
-        }
-    }
-    stop(cellId) {
-        const ac = this.controllers.get(cellId);
-        ac?.abort();
-        this.controllers.delete(cellId);
-        const id = this.intervals.get(cellId);
-        if (id !== undefined) {
-            clearInterval(id);
-            this.intervals.delete(cellId);
-        }
-    }
-    stopAll() {
-        for (const id of Array.from(this.intervals.keys()))
-            this.stop(id);
-    }
-    restart(cellId) {
-        const cell = this.getCell(cellId);
-        this.stop(cellId);
-        if (cell?.enabled)
-            this.start(cellId);
-    }
-    isRunning(cellId) {
-        return this.intervals.has(cellId);
+    get executorConfig() {
+        return SERVER_CONFIG;
     }
     startQueuePolling() {
         setInterval(() => {
