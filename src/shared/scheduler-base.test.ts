@@ -49,7 +49,6 @@ function simpleCreateGlobals(
     $env: _env,
     $secrets: _secretsObj,
     $props: _props,
-    $cells: cellsApi,
     $queue: { enqueue: cellsApi.enqueue },
     $pubsub: { emit: cellsApi.emitEvent },
     signal,
@@ -90,10 +89,6 @@ class TestScheduler extends BaseScheduler {
 
   protected override buildCellsAPI(): CellsAPI {
     return {
-      run: (id, props) => { this.runOnce(id, props); },
-      start: (id) => this.start(id),
-      stop: (id) => this.stop(id),
-      list: () => [],
       enqueue: () => {},
       emitEvent: () => {},
     };
@@ -205,11 +200,5 @@ describe('BaseScheduler', () => {
     expect(results.length).toBeLessThan(countAfterFirstTick + 4);
   });
 
-  it('buildCellsAPI.run calls runOnce', async () => {
-    const api = scheduler.buildCellsAPI();
-    api.run('cell-1');
 
-    await vi.advanceTimersByTimeAsync(0);
-    expect(results).toHaveLength(1);
-  });
 });

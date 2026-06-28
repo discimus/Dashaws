@@ -1,5 +1,5 @@
-import type { Cell, QueueMessage, CronEntry, Queue, EventTopic } from '../../src/types/cell.js';
-import type { ExecutionResult, CellsAPI } from '../../src/shared/types.js';
+import type { QueueMessage, CronEntry, Queue, EventTopic } from '../../src/types/cell.js';
+import type { CellsAPI } from '../../src/shared/types.js';
 import type { ExecutorConfig } from '../../src/shared/executor-core.js';
 import { BaseScheduler, type GetCell, type GetEnv, type OnResult } from '../../src/shared/scheduler-base.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
@@ -127,20 +127,6 @@ export class ServerScheduler extends BaseScheduler {
 
   protected override buildCellsAPI(): CellsAPI {
     return {
-      run: (id, props) => { this.runOnce(id, props); },
-      start: (id) => {
-        const cell = this.getCell(id);
-        if (cell && !cell.enabled) { cell.enabled = true; this.start(id); }
-      },
-      stop: (id) => this.stop(id),
-      list: () => {
-        const result: { id: string; name: string; status: string }[] = [];
-        for (const c of this.intervals.keys()) {
-          const cell = this.getCell(c);
-          if (cell) result.push({ id: cell.id, name: cell.name, status: 'running' });
-        }
-        return result;
-      },
       enqueue: (name, body) => {
         const { queues } = this.getData();
         const queue = queues[name];

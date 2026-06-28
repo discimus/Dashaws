@@ -1,4 +1,3 @@
-import type { LogEntry } from '../../src/types/cell.js';
 import type { ExecutionResult, CellsAPI, SandboxGlobals } from '../../src/shared/types.js';
 import type { ExecutorConfig } from '../../src/shared/executor-core.js';
 import { executeScript as coreExecuteScript } from '../../src/shared/executor-core.js';

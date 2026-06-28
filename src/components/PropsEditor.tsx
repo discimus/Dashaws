@@ -121,7 +121,7 @@ export function PropsEditor({ cell, onSave }: Props) {
     <div className="border-t border-gray-600/50">
       <div className="px-3 py-1.5 flex items-center justify-between">
         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">$props (JSON)</span>
-        <span className="text-[10px] text-gray-600">— passed via $cells.run(id, props)</span>
+        <span className="text-[10px] text-gray-600">— passed via queue or pubsub messages</span>
       </div>
       <div ref={containerRef} className="codemirror-editor text-xs" />
     </div>

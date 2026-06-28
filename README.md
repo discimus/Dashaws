@@ -6,7 +6,7 @@ A local-first dashboard for scheduling and executing user-defined JavaScript scr
 
 - **Sandboxed execution** — Scripts run in isolated `new Function()` contexts with strict mode, blocked dangerous globals, and console output masking against secrets
 - **Scheduler** — Configurable intervals (ms), cron expressions, queue consumers, and pub/sub subscribers
-- **Inter-script communication** — `$cells` API (run/start/stop other scripts), `$queue.enqueue`, `$pubsub.emit`
+- **Inter-script communication** — `$queue.enqueue`, `$pubsub.emit`
 - **Persistent state** — `$state` survives script restarts and page reloads
 - **Environment variables** — `$env.KEY` from the Environment tab
 - **Encrypted secrets** — `$secrets.KEY` with PBKDF2 (200k iterations, SHA-256) + AES-GCM 256-bit encryption at rest
@@ -103,9 +103,8 @@ server/
 | `$state` | Mutable object persisted across runs |
 | `$env` | Environment variables (strings) |
 | `$secrets` | Encrypted secrets (masked in console output) |
-| `$props` | Run parameters (from UI gear icon or `$cells.run`) |
-| `$cells` | API to run/start/stop/list other scripts |
-| `$queue.enqueue(name, body)` | Send a message to a queue |
+| `$props` | Run parameters (from UI gear icon, queue, or pubsub message) |
+| `$queue.enqueue(name, body)` | Send a message to a FIFO queue |
 | `$pubsub.emit(name, body)` | Publish an event to a topic |
 | `fetch` | Native Fetch API |
 | `loadPackage(spec)` | Dynamic import from esm.sh |

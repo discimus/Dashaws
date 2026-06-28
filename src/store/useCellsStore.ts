@@ -420,7 +420,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       name: `Script ${get().cells.length + 1}`,
       script: `// Click ? Help for the full reference
 //
-// Quick globals: $state $env $secrets $props $cells $queue $pubsub fetch console loadPackage setTimeout signal
+// Quick globals: $state $env $secrets $props $queue $pubsub fetch console loadPackage setTimeout signal
 
 console.log("Hello!");
 

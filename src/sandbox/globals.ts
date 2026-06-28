@@ -38,7 +38,6 @@ export function createSandboxGlobals(
     $env: { ...env },
     $secrets: { ...secretsObj },
     $props: { ...props },
-    $cells: cellsApi,
     $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
     $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
     loadPackage: createLoadPackage(),

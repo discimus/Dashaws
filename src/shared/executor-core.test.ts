@@ -30,7 +30,6 @@ function simpleCreateGlobals(
     $env: _env,
     $secrets: _secretsObj,
     $props: _props,
-    $cells: cellsApi,
     $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
     $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
     signal,
@@ -65,10 +64,6 @@ const defaultConfig: ExecutorConfig = {
 };
 
 const dummyApi: CellsAPI = {
-  run: () => {},
-  start: () => {},
-  stop: () => {},
-  list: () => [],
   enqueue: () => {},
   emitEvent: () => {},
 };
@@ -256,34 +251,6 @@ describe('executeScript', () => {
 
     expect(result.success).toBe(false);
     expect(finallyCalled).toBe(true);
-  });
-
-  it('$cells API is injected', async () => {
-    let calledWith: unknown = null;
-    const api: CellsAPI = {
-      ...dummyApi,
-      run: (id, _props) => { calledWith = id; },
-    };
-
-    const config: ExecutorConfig = {
-      ...defaultConfig,
-      createGlobals: (state, env, secrets, secretsObj, props, cellsApi, signal, onLog) =>
-        simpleCreateGlobals(state, env, secrets, secretsObj, props, cellsApi, signal, onLog),
-    };
-
-    await executeScript(
-      '$cells.run("test-id");',
-      {},
-      {},
-      new Set(),
-      {},
-      {},
-      api,
-      new AbortController().signal,
-      config
-    );
-
-    expect(calledWith).toBe('test-id');
   });
 
   it('setInterval is blocked (parameter-level)', async () => {

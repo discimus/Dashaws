@@ -59,23 +59,6 @@ export class Scheduler extends BaseScheduler {
 
   protected override buildCellsAPI(): CellsAPI {
     return {
-      run: (id, props) => { this.runOnce(id, props); },
-      start: (id) => {
-        const cell = this.getCell(id);
-        if (cell && !cell.enabled) {
-          cell.enabled = true;
-          this.start(id);
-        }
-      },
-      stop: (id) => this.stop(id),
-      list: () => {
-        const cells: { id: string; name: string; status: string }[] = [];
-        for (const c of this.intervals.keys()) {
-          const cell = this.getCell(c);
-          if (cell) cells.push({ id: cell.id, name: cell.name, status: 'running' });
-        }
-        return cells;
-      },
       enqueue: (name, body) => this.onEnqueue(name, body),
       emitEvent: (name, body) => this.onEmit(name, body),
     };

@@ -38,42 +38,13 @@ console.log(res.status);`}</Example>
         </SubSection>
 
         <SubSection title="$props" type="Record&lt;string, unknown&gt;">
-          Parameters defined in the <strong>gear (⚙)</strong> icon of a script card, or passed when calling <Code>$cells.run(id, props)</Code>. Merged together — <Code>$cells.run</Code> props take precedence.
+          Parameters defined in the <strong>gear (⚙)</strong> icon of a script card. When a script is triggered by a queue message or pubsub event, the parsed message body is passed as <Code>$props</Code>.
           <Example>{`// Gear defines: { "endpoint": "users" }
-// $cells.run("script-123", { dryRun: true })
+// Queue message: { "dryRun": true }
 // → $props = { endpoint: "users", dryRun: true }
 
 console.log("Endpoint:", $props.endpoint);
 if ($props.dryRun) console.log("Dry run mode");`}</Example>
-        </SubSection>
-
-        <SubSection title="$cells" type="CellsAPI">
-          <table className="mt-2 w-full text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-gray-700 text-left">
-                <th className="py-1.5 pr-4 text-gray-400 font-semibold w-32">Method</th>
-                <th className="py-1.5 text-gray-400 font-semibold">Description</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-300">
-              <tr className="border-b border-gray-800">
-                <td className="py-1.5 pr-4"><Code>run(id, props?)</Code></td>
-                <td className="py-1.5">Execute another script once, optionally passing props</td>
-              </tr>
-              <tr className="border-b border-gray-800">
-                <td className="py-1.5 pr-4"><Code>start(id)</Code></td>
-                <td className="py-1.5">Start another script's interval scheduler</td>
-              </tr>
-              <tr className="border-b border-gray-800">
-                <td className="py-1.5 pr-4"><Code>stop(id)</Code></td>
-                <td className="py-1.5">Stop another script's interval scheduler</td>
-              </tr>
-              <tr>
-                <td className="py-1.5 pr-4"><Code>list()</Code></td>
-                <td className="py-1.5">Returns array of <Code>{`{ id, name, status }`}</Code> for all scripts</td>
-              </tr>
-            </tbody>
-          </table>
         </SubSection>
 
         <SubSection title="$queue" type="{ enqueue }">

@@ -110,24 +110,6 @@ export class ServerScheduler extends BaseScheduler {
     }
     buildCellsAPI() {
         return {
-            run: (id, props) => { this.runOnce(id, props); },
-            start: (id) => {
-                const cell = this.getCell(id);
-                if (cell && !cell.enabled) {
-                    cell.enabled = true;
-                    this.start(id);
-                }
-            },
-            stop: (id) => this.stop(id),
-            list: () => {
-                const result = [];
-                for (const c of this.intervals.keys()) {
-                    const cell = this.getCell(c);
-                    if (cell)
-                        result.push({ id: cell.id, name: cell.name, status: 'running' });
-                }
-                return result;
-            },
             enqueue: (name, body) => {
                 const { queues } = this.getData();
                 const queue = queues[name];

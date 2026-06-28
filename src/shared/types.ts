@@ -8,10 +8,6 @@ export interface ExecutionResult {
 }
 
 export interface CellsAPI {
-  run: (id: string, props?: Record<string, unknown>) => void;
-  start: (id: string) => void;
-  stop: (id: string) => void;
-  list: () => { id: string; name: string; status: string }[];
   enqueue: (name: string, body: string) => void;
   emitEvent: (name: string, body: string) => void;
 }
@@ -31,7 +27,6 @@ export interface SandboxGlobals {
   $env: Record<string, string>;
   $secrets: Record<string, string>;
   $props: Record<string, unknown>;
-  $cells: CellsAPI;
   $queue: { enqueue: (name: string, body: string) => void };
   $pubsub: { emit: (name: string, body: string) => void };
   loadPackage: (spec: string) => Promise<Record<string, unknown>>;

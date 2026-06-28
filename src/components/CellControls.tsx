@@ -184,7 +184,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
           </button>
           <span
             className="text-gray-400 hover:text-gray-200 cursor-help text-xs"
-            title="Parameters define $props values passed into scripts. Other scripts can override them via $cells.run(id, { key: value }). Access them inside scripts as $props.key."
+            title="Parameters define $props values passed into scripts. Overridden by queue or pubsub message bodies. Access inside scripts as $props.key."
           >
             &#9432;
           </span>
