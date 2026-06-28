@@ -307,70 +307,14 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Script ${get().cells.length + 1}`,
-      script: `// ── Sandbox Globals ──────────────────────────────────
-// $state      · persist data across runs
-// $env        · environment variables · $env.API_URL
-// $secrets    · encrypted secrets (masked in logs) · $secrets.API_KEY
-// $props      · params from gear or $cells.run()
-// $cells      · inter-script control (run, start, stop, list)
-// $queue      · enqueue messages · $queue.enqueue("name", body)
-// $pubsub     · broadcast events  · $pubsub.emit("name", body)
-// console     · log, warn, error, info, table
-// fetch       · HTTP requests (standard Web API)
-// setTimeout  · tracked timer (auto-cleaned)
-// clearTimeout· cancel tracked timer
-// loadPackage · npm packages from CDN · await loadPackage("lodash@4")
-// signal      · AbortSignal (aborted when script stops)
-// Math Date JSON Array Object String Number Boolean
-// RegExp Map Set Promise Error parseInt parseFloat
-// isNaN isFinite encodeURI decodeURI btoa atob
+      script: `// Click ? Help for the full reference
 //
-// ── Examples ─────────────────────────────────────────
+// Quick globals: $state $env $secrets $props $cells $queue $pubsub fetch console loadPackage setTimeout signal
 
 console.log("Hello!");
 
-// $state persists across runs
 $state.counter = ($state.counter || 0) + 1;
 console.log("Run count:", $state.counter);
-
-// Use $props (from gear or $cells.run(id, { key: val }))
-// console.log("Props:", $props.myParam);
-
-// HTTP request with $env
-// const res = await fetch($env.API_URL || "https://api.github.com/zen");
-// console.log(await res.text());
-
-// Authenticated request with $secrets (value masked in output)
-// const data = await fetch("https://api.service.com", {
-//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }
-// });
-
-// Trigger another script
-// $cells.run("script-id-here", { myParam: "hello" });
-
-// Start/stop/list scripts
-// $cells.start("script-id-here");
-// console.table($cells.list());
-
-// Enqueue to a queue (FIFO)
-// $queue.enqueue("my-queue", JSON.stringify({ task: "process" }));
-
-// Broadcast to pub/sub (all subscribers run immediately)
-// $pubsub.emit("my-topic", JSON.stringify({ event: "deploy" }));
-
-// Load npm packages from CDN
-// const _ = (await loadPackage("lodash@4")).default;
-// console.log(_.chunk([1, 2, 3, 4], 2));
-//
-// const dayjs = (await loadPackage("dayjs")).default;
-// console.log(dayjs().format("DD/MM/YYYY"));
-
-// Tracked timers (auto-cleaned on script stop)
-// const id = setTimeout(() => console.log("delayed"), 2000);
-// clearTimeout(id);
-
-// Handle abort gracefully
-// signal.addEventListener("abort", () => console.log("Stopping..."));
 `,
       intervalMs: 10000,
       enabled: false,
