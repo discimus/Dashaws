@@ -26,3 +26,8 @@ dist-ssr
 data/*
 data-python/*
 data-nodejs/*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
