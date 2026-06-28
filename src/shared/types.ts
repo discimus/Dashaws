@@ -34,6 +34,7 @@ export interface SandboxGlobals {
   $cells: CellsAPI;
   $queue: { enqueue: (name: string, body: string) => void };
   $pubsub: { emit: (name: string, body: string) => void };
+  loadPackage: (spec: string) => Promise<Record<string, unknown>>;
   signal: AbortSignal;
   Math: typeof Math;
   Date: typeof Date;

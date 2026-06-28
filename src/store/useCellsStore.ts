@@ -307,35 +307,36 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Script ${get().cells.length + 1}`,
-      script: `// ── Sandbox Globals ──────────────────────────────────────
-// $state      · persist data between script runs (object, survives restarts)
+      script: `// ── Sandbox Globals ──────────────────────────────────
+// $state      · persist data across runs
 // $env        · environment variables · $env.API_URL
 // $secrets    · encrypted secrets (masked in logs) · $secrets.API_KEY
-// $props      · params defined in ⚙ gear, or passed via $cells.run()
+// $props      · params from gear or $cells.run()
 // $cells      · inter-script control (run, start, stop, list)
-// $queue      · enqueue messages · $queue.enqueue("my-queue", body)
-// $pubsub     · broadcast events  · $pubsub.emit("my-topic", body)
-// console     · log, warn, error, info, table (output shown below)
+// $queue      · enqueue messages · $queue.enqueue("name", body)
+// $pubsub     · broadcast events  · $pubsub.emit("name", body)
+// console     · log, warn, error, info, table
 // fetch       · HTTP requests (standard Web API)
-// setTimeout  · tracked timer (auto-cleaned after execution)
+// setTimeout  · tracked timer (auto-cleaned)
 // clearTimeout· cancel tracked timer
+// loadPackage · npm packages from CDN · await loadPackage("lodash@4")
 // signal      · AbortSignal (aborted when script stops)
 // Math Date JSON Array Object String Number Boolean
 // RegExp Map Set Promise Error parseInt parseFloat
 // isNaN isFinite encodeURI decodeURI btoa atob
 //
-// ── Examples ──────────────────────────────────────────
+// ── Examples ─────────────────────────────────────────
 
-console.log("Hello from the script!");
+console.log("Hello!");
 
-// Persist data across runs with $state
+// $state persists across runs
 $state.counter = ($state.counter || 0) + 1;
 console.log("Run count:", $state.counter);
 
-// Use $props (from ⚙ gear or $cells.run(id, { key: val }))
+// Use $props (from gear or $cells.run(id, { key: val }))
 // console.log("Props:", $props.myParam);
 
-// HTTP request with $env for configuration
+// HTTP request with $env
 // const res = await fetch($env.API_URL || "https://api.github.com/zen");
 // console.log(await res.text());
 
@@ -344,27 +345,32 @@ console.log("Run count:", $state.counter);
 //   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }
 // });
 
-// Trigger another script with $cells
+// Trigger another script
 // $cells.run("script-id-here", { myParam: "hello" });
 
-// Start/stop another script by ID
+// Start/stop/list scripts
 // $cells.start("script-id-here");
-
-// List all running scripts
 // console.table($cells.list());
 
-// Enqueue a message to a queue (FIFO, processed by subscribers)
+// Enqueue to a queue (FIFO)
 // $queue.enqueue("my-queue", JSON.stringify({ task: "process" }));
 
-// Broadcast to pub/sub topic (all subscribers run immediately)
+// Broadcast to pub/sub (all subscribers run immediately)
 // $pubsub.emit("my-topic", JSON.stringify({ event: "deploy" }));
+
+// Load npm packages from CDN
+// const _ = (await loadPackage("lodash@4")).default;
+// console.log(_.chunk([1, 2, 3, 4], 2));
+//
+// const dayjs = (await loadPackage("dayjs")).default;
+// console.log(dayjs().format("DD/MM/YYYY"));
 
 // Tracked timers (auto-cleaned on script stop)
 // const id = setTimeout(() => console.log("delayed"), 2000);
 // clearTimeout(id);
 
 // Handle abort gracefully
-// signal.addEventListener("abort", () => console.log("Script stopping..."));
+// signal.addEventListener("abort", () => console.log("Stopping..."));
 `,
       intervalMs: 10000,
       enabled: false,

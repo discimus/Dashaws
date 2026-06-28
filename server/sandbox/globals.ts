@@ -2,6 +2,7 @@ import type { LogEntry } from '../../src/types/cell.js';
 import type { CellsAPI, SandboxGlobals } from '../../src/shared/types.js';
 import { createConsoleProxy, createTrackedSetTimeout, createTrackedClearTimeout } from '../../src/shared/globals-factory.js';
 import { stripConstructors } from '../../src/shared/strip-constructors.js';
+import { createServerLoadPackage } from './load-package.js';
 
 let currentTimerIds: Set<number> | null = null;
 
@@ -40,6 +41,7 @@ export function createServerSandboxGlobals(
     $cells: cellsApi,
     $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
     $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
+    loadPackage: createServerLoadPackage(),
     signal,
     Math,
     Date: stripped.Date,

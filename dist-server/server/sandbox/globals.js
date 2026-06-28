@@ -1,5 +1,6 @@
 import { createConsoleProxy, createTrackedSetTimeout, createTrackedClearTimeout } from '../../src/shared/globals-factory.js';
 import { stripConstructors } from '../../src/shared/strip-constructors.js';
+import { createServerLoadPackage } from './load-package.js';
 let currentTimerIds = null;
 export function cleanupServerTimers() {
     if (currentTimerIds) {
@@ -26,6 +27,7 @@ export function createServerSandboxGlobals(cellState, env, secrets, secretsObj, 
         $cells: cellsApi,
         $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
         $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
+        loadPackage: createServerLoadPackage(),
         signal,
         Math,
         Date: stripped.Date,

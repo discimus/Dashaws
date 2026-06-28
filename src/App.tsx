@@ -9,9 +9,10 @@ import { SecretsView } from './components/SecretsView';
 import { QueuesView } from './components/QueuesView';
 import { PubSubView } from './components/PubSubView';
 import { CronView } from './components/CronView';
+import { HelpView } from './components/HelpView';
 import { Toast } from './components/Toast';
 
-export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons';
+export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons' | 'help';
 
 export default function App() {
   const { loaded, init } = useCellsStore();
@@ -46,7 +47,7 @@ export default function App() {
           {view === 'overview' ? (
             <Overview onEditCell={navigateToEditor} />
           ) : view === 'scripts' ? (
-            <ScriptsView focusCellId={focusCellId} onFocusHandled={() => setFocusCellId(null)} />
+            <ScriptsView focusCellId={focusCellId} onFocusHandled={() => setFocusCellId(null)} onNavigateHelp={() => setView('help')} />
           ) : view === 'env' ? (
             <EnvView />
           ) : view === 'secrets' ? (
@@ -55,8 +56,10 @@ export default function App() {
             <QueuesView />
           ) : view === 'pubsub' ? (
             <PubSubView />
-          ) : (
+          ) : view === 'crons' ? (
             <CronView />
+          ) : (
+            <HelpView />
           )}
         </main>
       </div>
