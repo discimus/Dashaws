@@ -350,16 +350,21 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     if (!isServerMode) {
       setInterval(() => {
         const state = get();
-        const now = new Date();
+        const now = Date.now();
+        const currentMinute = Math.floor(now / 60000);
         for (const cron of state.crons) {
           if (!cron.enabled) continue;
-          if (cron.lastRunAt && now.getTime() - cron.lastRunAt < 55000) continue;
-          if (!cronMatches(cron.expression, now)) continue;
+          if (cron.lastRunAt) {
+            const lastMinute = Math.floor(cron.lastRunAt / 60000);
+            if (lastMinute >= currentMinute) continue;
+          }
+          if (!cronMatches(cron.expression, new Date(now))) continue;
           dispatchCron(cron, state);
+          const runTs = Date.now();
           set(s => ({
-            crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: now.getTime() } : c),
+            crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: runTs } : c),
           }));
-          saveCrons(get().crons);
+          persistCrons(get().crons);
         }
       }, 15000);
 

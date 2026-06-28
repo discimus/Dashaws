@@ -79,12 +79,17 @@ export class ServerScheduler extends BaseScheduler {
   startCronPolling(): void {
     this.cronInterval = setInterval(() => {
       const { crons } = this.getData();
-      const now = new Date();
+      const now = Date.now();
+      const currentMinute = Math.floor(now / 60000);
       for (const cron of crons) {
         if (!cron.enabled) continue;
-        if (cron.lastRunAt && now.getTime() - cron.lastRunAt < 55000) continue;
-        if (!cronMatches(cron.expression, now)) continue;
+        if (cron.lastRunAt) {
+          const lastMinute = Math.floor(cron.lastRunAt / 60000);
+          if (lastMinute >= currentMinute) continue;
+        }
+        if (!cronMatches(cron.expression, new Date(now))) continue;
         this.dispatchCron(cron);
+        cron.lastRunAt = now;
       }
     }, 15000);
   }
