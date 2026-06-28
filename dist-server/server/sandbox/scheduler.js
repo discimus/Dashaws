@@ -2,28 +2,13 @@ import { BaseScheduler } from '../../src/shared/scheduler-base.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
 import { cronMatches } from '../../src/utils/cron.js';
 import { maskState } from '../../src/shared/mask.js';
-import { createServerSandboxGlobals, clearTimerIds } from './globals.js';
-const BLOCKED_GLOBALS = {
-    globalThis: undefined,
-    global: undefined,
-    window: undefined,
-    self: undefined,
-    document: undefined,
-    localStorage: undefined,
-    sessionStorage: undefined,
-    require: undefined,
-    module: undefined,
-    exports: undefined,
-    __dirname: undefined,
-    __filename: undefined,
-    process: undefined,
-    Function: undefined,
-};
+import { createServerSandboxGlobals, cleanupServerTimers } from './globals.js';
+import { SERVER_BLOCKED_GLOBALS } from '../../src/shared/blocked-globals.js';
 const SERVER_CONFIG = {
-    blockedGlobals: BLOCKED_GLOBALS,
+    blockedGlobals: SERVER_BLOCKED_GLOBALS,
     createGlobals: createServerSandboxGlobals,
     maskState,
-    onFinally: clearTimerIds,
+    onFinally: cleanupServerTimers,
 };
 export class ServerScheduler extends BaseScheduler {
     getCell;
@@ -32,6 +17,7 @@ export class ServerScheduler extends BaseScheduler {
     getData;
     onEmit;
     cronInterval = null;
+    queueInterval = null;
     constructor(getCell, onResult, getEnv, getData, onEmit) {
         super();
         this.getCell = getCell;
@@ -47,7 +33,7 @@ export class ServerScheduler extends BaseScheduler {
         return SERVER_CONFIG;
     }
     startQueuePolling() {
-        setInterval(() => {
+        this.queueInterval = setInterval(() => {
             const { queues } = this.getData();
             for (const q of Object.values(queues)) {
                 if (q.messages.length === 0)
@@ -64,6 +50,12 @@ export class ServerScheduler extends BaseScheduler {
             }
         }, 2000);
     }
+    stopQueuePolling() {
+        if (this.queueInterval) {
+            clearInterval(this.queueInterval);
+            this.queueInterval = null;
+        }
+    }
     startCronPolling() {
         this.cronInterval = setInterval(() => {
             const { crons } = this.getData();
@@ -78,6 +70,12 @@ export class ServerScheduler extends BaseScheduler {
                 this.dispatchCron(cron);
             }
         }, 15000);
+    }
+    stopCronPolling() {
+        if (this.cronInterval) {
+            clearInterval(this.cronInterval);
+            this.cronInterval = null;
+        }
     }
     dispatchCron(cron) {
         const props = parseMessageBody(cron.payload);

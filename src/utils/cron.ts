@@ -64,19 +64,6 @@ function fieldMatches(expr: string, field: { value: number; min: number; max: nu
   return false;
 }
 
-export function cronNextRun(expression: string, from = new Date()): Date | null {
-  if (!cronMatches(expression, from)) {
-    // Already matches now, return now
-  }
-  const next = new Date(from.getTime() + 60000);
-  next.setSeconds(0, 0);
-  for (let i = 0; i < 525600; i++) {
-    if (cronMatches(expression, next)) return next;
-    next.setTime(next.getTime() + 60000);
-  }
-  return null;
-}
-
 export function cronDescribe(expression: string): string {
   const parts = expression.trim().split(/\s+/);
   if (parts.length !== 5) return 'Invalid expression';

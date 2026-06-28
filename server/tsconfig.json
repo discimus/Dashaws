@@ -24,7 +24,9 @@
     "../src/shared/types.ts",
     "../src/shared/globals-factory.ts",
     "../src/shared/executor-core.ts",
-    "../src/shared/scheduler-base.ts"
+    "../src/shared/scheduler-base.ts",
+    "../src/shared/blocked-globals.ts",
+    "../src/shared/strip-constructors.ts"
   ],
   "exclude": ["../node_modules"]
 }

@@ -1,18 +1,15 @@
 import type { LogEntry } from '../../src/types/cell.js';
 import type { CellsAPI, SandboxGlobals } from '../../src/shared/types.js';
 import { createConsoleProxy, createTrackedSetTimeout, createTrackedClearTimeout } from '../../src/shared/globals-factory.js';
+import { stripConstructors } from '../../src/shared/strip-constructors.js';
 
-let timerIds: Set<number> | null = null;
+let currentTimerIds: Set<number> | null = null;
 
-function getTimerIds(): Set<number> {
-  if (!timerIds) timerIds = new Set();
-  return timerIds;
-}
-
-export function clearTimerIds(): void {
-  if (timerIds) {
-    for (const id of timerIds) globalThis.clearTimeout(id);
-    timerIds.clear();
+export function cleanupServerTimers(): void {
+  if (currentTimerIds) {
+    for (const id of currentTimerIds) globalThis.clearTimeout(id);
+    currentTimerIds.clear();
+    currentTimerIds = null;
   }
 }
 
@@ -26,13 +23,15 @@ export function createServerSandboxGlobals(
   signal: AbortSignal,
   onLog: (entry: LogEntry) => void
 ): SandboxGlobals {
-  const ids = getTimerIds();
+  currentTimerIds = new Set<number>();
+  const timerIds = currentTimerIds;
   const consoleProxy = createConsoleProxy(secrets, onLog);
+  const stripped = stripConstructors();
 
   return {
     fetch: globalThis.fetch.bind(globalThis),
-    setTimeout: createTrackedSetTimeout(ids),
-    clearTimeout: createTrackedClearTimeout(ids),
+    setTimeout: createTrackedSetTimeout(timerIds),
+    clearTimeout: createTrackedClearTimeout(timerIds),
     console: consoleProxy,
     $state: cellState,
     $env: { ...env },
@@ -42,10 +41,26 @@ export function createServerSandboxGlobals(
     $queue: { enqueue: (name, body) => cellsApi.enqueue(name, body) },
     $pubsub: { emit: (name, body) => cellsApi.emitEvent(name, body) },
     signal,
-    Math, Date, JSON, Array, Object, String, Number, Boolean, RegExp, Map, Set, Promise,
-    parseInt, parseFloat, isNaN, isFinite, encodeURI, decodeURI,
+    Math,
+    Date: stripped.Date,
+    JSON,
+    Array: stripped.Array,
+    Object: stripped.Object,
+    String: stripped.String,
+    Number: stripped.Number,
+    Boolean: stripped.Boolean,
+    RegExp: stripped.RegExp,
+    Map: stripped.Map,
+    Set: stripped.Set,
+    Promise: stripped.Promise,
+    parseInt,
+    parseFloat,
+    isNaN,
+    isFinite,
+    encodeURI,
+    decodeURI,
     btoa: (data: string) => Buffer.from(data).toString('base64'),
     atob: (data: string) => Buffer.from(data, 'base64').toString(),
-    ErrorConstructor: Error,
+    ErrorConstructor: stripped.ErrorConstructor,
   };
 }

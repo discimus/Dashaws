@@ -8,6 +8,7 @@ export function createConsoleProxy(
 ): SandboxGlobals['console'] {
   return new Proxy({} as SandboxGlobals['console'], {
     get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
       return (...args: unknown[]) => {
         const type = prop === 'warn' ? 'warn'
           : prop === 'error' ? 'error'

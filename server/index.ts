@@ -59,6 +59,15 @@ async function initScheduler(): Promise<void> {
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 const apiRouter = createApiRouter((name, body) => {
   const topic = serverEventTopics[name];
   if (!topic) return;

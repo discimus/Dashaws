@@ -63,19 +63,6 @@ function fieldMatches(expr, field) {
     }
     return false;
 }
-export function cronNextRun(expression, from = new Date()) {
-    if (!cronMatches(expression, from)) {
-        // Already matches now, return now
-    }
-    const next = new Date(from.getTime() + 60000);
-    next.setSeconds(0, 0);
-    for (let i = 0; i < 525600; i++) {
-        if (cronMatches(expression, next))
-            return next;
-        next.setTime(next.getTime() + 60000);
-    }
-    return null;
-}
 export function cronDescribe(expression) {
     const parts = expression.trim().split(/\s+/);
     if (parts.length !== 5)

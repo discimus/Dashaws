@@ -2,6 +2,8 @@ import { maskArgs } from './mask.js';
 export function createConsoleProxy(secrets, onLog) {
     return new Proxy({}, {
         get(_target, prop) {
+            if (typeof prop === 'symbol')
+                return undefined;
             return (...args) => {
                 const type = prop === 'warn' ? 'warn'
                     : prop === 'error' ? 'error'

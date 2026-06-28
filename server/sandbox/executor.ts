@@ -2,30 +2,14 @@ import type { LogEntry } from '../../src/types/cell.js';
 import type { ExecutionResult, CellsAPI, SandboxGlobals } from '../../src/shared/types.js';
 import type { ExecutorConfig } from '../../src/shared/executor-core.js';
 import { executeScript as coreExecuteScript } from '../../src/shared/executor-core.js';
-import { createServerSandboxGlobals, clearTimerIds } from './globals.js';
+import { createServerSandboxGlobals, cleanupServerTimers } from './globals.js';
 import { maskState } from '../../src/shared/mask.js';
+import { SERVER_BLOCKED_GLOBALS } from '../../src/shared/blocked-globals.js';
 
 export type { ExecutionResult, CellsAPI } from '../../src/shared/types.js';
 
-const BLOCKED_GLOBALS: Record<string, unknown> = {
-  globalThis: undefined,
-  global: undefined,
-  window: undefined,
-  self: undefined,
-  document: undefined,
-  localStorage: undefined,
-  sessionStorage: undefined,
-  require: undefined,
-  module: undefined,
-  exports: undefined,
-  __dirname: undefined,
-  __filename: undefined,
-  process: undefined,
-  Function: undefined,
-};
-
 const serverConfig: ExecutorConfig = {
-  blockedGlobals: BLOCKED_GLOBALS,
+  blockedGlobals: SERVER_BLOCKED_GLOBALS,
   createGlobals(
     cellState, env, secrets, secretsObj, props, cellsApi, signal, onLog
   ): SandboxGlobals {
@@ -34,7 +18,7 @@ const serverConfig: ExecutorConfig = {
     );
   },
   maskState,
-  onFinally: clearTimerIds,
+  onFinally: cleanupServerTimers,
 };
 
 export async function executeScript(

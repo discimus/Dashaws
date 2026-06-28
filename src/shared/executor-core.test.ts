@@ -3,6 +3,7 @@ import type { LogEntry } from '../types/cell';
 import type { CellsAPI, SandboxGlobals } from './types';
 import { executeScript, ExecutorConfig } from './executor-core';
 import { maskState } from './mask';
+import { stripConstructors } from './strip-constructors';
 
 function simpleCreateGlobals(
   _cellState: Record<string, unknown>,
@@ -283,5 +284,67 @@ describe('executeScript', () => {
     );
 
     expect(calledWith).toBe('test-id');
+  });
+
+  it('setInterval is blocked (parameter-level)', async () => {
+    const config: ExecutorConfig = {
+      ...defaultConfig,
+      blockedGlobals: { ...defaultConfig.blockedGlobals, setInterval: undefined, clearInterval: undefined },
+    };
+
+    const result = await executeScript(
+      'console.log(typeof setInterval);',
+      {},
+      {},
+      new Set(),
+      {},
+      {},
+      dummyApi,
+      new AbortController().signal,
+      config
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.output[0].args[0]).toBe('undefined');
+  });
+
+  it('blocks constructor chain escape via stripConstructors', async () => {
+    const stripped = stripConstructors();
+    const hardenedGlobals = (
+      _cellState: Record<string, unknown>,
+      _env: Record<string, string>,
+      _secrets: Set<string>,
+      _secretsObj: Record<string, string>,
+      _props: Record<string, unknown>,
+      cellsApi: CellsAPI,
+      signal: AbortSignal,
+      onLog: (entry: LogEntry) => void
+    ): SandboxGlobals => ({
+      ...simpleCreateGlobals(_cellState, _env, _secrets, _secretsObj, _props, cellsApi, signal, onLog),
+      Object: stripped.Object,
+      Array: stripped.Array,
+      Date: stripped.Date,
+      ErrorConstructor: stripped.ErrorConstructor,
+    });
+
+    const hardConfig: ExecutorConfig = {
+      ...defaultConfig,
+      createGlobals: hardenedGlobals,
+    };
+
+    const result = await executeScript(
+      'console.log(typeof ({}).constructor.constructor);',
+      {},
+      {},
+      new Set(),
+      {},
+      {},
+      dummyApi,
+      new AbortController().signal,
+      hardConfig
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.output[0].args[0]).toBe('undefined');
   });
 });

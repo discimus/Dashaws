@@ -45,6 +45,14 @@ async function initScheduler() {
 }
 const app = express();
 app.use(express.json({ limit: '10mb' }));
+app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '0');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
 const apiRouter = createApiRouter((name, body) => {
     const topic = serverEventTopics[name];
     if (!topic)
@@ -57,7 +65,6 @@ const apiRouter = createApiRouter((name, body) => {
 });
 app.use('/api', apiRouter);
 const distPath = join(process.cwd(), 'dist');
-console.log('distPath:', distPath, 'exists:', existsSync(distPath));
 if (existsSync(distPath)) {
     app.use(express.static(distPath));
     app.use((_req, res) => {

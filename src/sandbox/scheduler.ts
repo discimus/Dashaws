@@ -3,26 +3,9 @@ import type { ExecutorConfig } from '../shared/executor-core';
 import { BaseScheduler, type GetCell, type GetEnv, type OnResult } from '../shared/scheduler-base';
 import { maskState } from '../shared/mask';
 import { createSandboxGlobals, cleanupBrowserTimers } from './globals';
+import { BROWSER_BLOCKED_GLOBALS } from '../shared/blocked-globals';
 
 export type { GetCell, GetEnv, OnResult };
-
-const BLOCKED_GLOBALS: Record<string, unknown> = {
-  window: undefined,
-  self: undefined,
-  globalThis: undefined,
-  frames: undefined,
-  parent: undefined,
-  top: undefined,
-  document: undefined,
-  localStorage: undefined,
-  sessionStorage: undefined,
-  Function: undefined,
-  XMLHttpRequest: undefined,
-  WebSocket: undefined,
-  EventSource: undefined,
-  location: undefined,
-  indexedDB: undefined,
-};
 
 function createGlobalsWrapper(
   state: Record<string, unknown>,
@@ -38,7 +21,7 @@ function createGlobalsWrapper(
 }
 
 const SCHEDULER_CONFIG: ExecutorConfig = {
-  blockedGlobals: BLOCKED_GLOBALS,
+  blockedGlobals: BROWSER_BLOCKED_GLOBALS,
   createGlobals: createGlobalsWrapper,
   maskState,
   onFinally: cleanupBrowserTimers,
