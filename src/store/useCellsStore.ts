@@ -307,7 +307,65 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const cell: Cell = {
       id: generateId(),
       name: `Script ${get().cells.length + 1}`,
-      script: `// Write your script here\n// Available globals: fetch, console, $state, $env, $secrets, $props, $cells, setTimeout, clearTimeout, signal\n\nconsole.log("Hello from the script!");\n\n// Example using $env:\n// const res = await fetch($env.API_URL || "https://api.github.com/zen");\n// const text = await res.text();\n// console.log(text);\n// $state.lastResult = text;\n\n// Example using $secrets (values are masked in logs):\n// const data = await fetch("https://api.service.com", {\n//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }\n// });\n\n// Example using $cells to trigger another script:\n// $cells.run("script-id-here", { myParam: "hello" });\n`,
+      script: `// ── Sandbox Globals ──────────────────────────────────────
+// $state      · persist data between script runs (object, survives restarts)
+// $env        · environment variables · $env.API_URL
+// $secrets    · encrypted secrets (masked in logs) · $secrets.API_KEY
+// $props      · params defined in ⚙ gear, or passed via $cells.run()
+// $cells      · inter-script control (run, start, stop, list)
+// $queue      · enqueue messages · $queue.enqueue("my-queue", body)
+// $pubsub     · broadcast events  · $pubsub.emit("my-topic", body)
+// console     · log, warn, error, info, table (output shown below)
+// fetch       · HTTP requests (standard Web API)
+// setTimeout  · tracked timer (auto-cleaned after execution)
+// clearTimeout· cancel tracked timer
+// signal      · AbortSignal (aborted when script stops)
+// Math Date JSON Array Object String Number Boolean
+// RegExp Map Set Promise Error parseInt parseFloat
+// isNaN isFinite encodeURI decodeURI btoa atob
+//
+// ── Examples ──────────────────────────────────────────
+
+console.log("Hello from the script!");
+
+// Persist data across runs with $state
+$state.counter = ($state.counter || 0) + 1;
+console.log("Run count:", $state.counter);
+
+// Use $props (from ⚙ gear or $cells.run(id, { key: val }))
+// console.log("Props:", $props.myParam);
+
+// HTTP request with $env for configuration
+// const res = await fetch($env.API_URL || "https://api.github.com/zen");
+// console.log(await res.text());
+
+// Authenticated request with $secrets (value masked in output)
+// const data = await fetch("https://api.service.com", {
+//   headers: { Authorization: \`Bearer \${$secrets.API_KEY}\` }
+// });
+
+// Trigger another script with $cells
+// $cells.run("script-id-here", { myParam: "hello" });
+
+// Start/stop another script by ID
+// $cells.start("script-id-here");
+
+// List all running scripts
+// console.table($cells.list());
+
+// Enqueue a message to a queue (FIFO, processed by subscribers)
+// $queue.enqueue("my-queue", JSON.stringify({ task: "process" }));
+
+// Broadcast to pub/sub topic (all subscribers run immediately)
+// $pubsub.emit("my-topic", JSON.stringify({ event: "deploy" }));
+
+// Tracked timers (auto-cleaned on script stop)
+// const id = setTimeout(() => console.log("delayed"), 2000);
+// clearTimeout(id);
+
+// Handle abort gracefully
+// signal.addEventListener("abort", () => console.log("Script stopping..."));
+`,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,
