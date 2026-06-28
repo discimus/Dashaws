@@ -1,5 +1,13 @@
 import { BaseScheduler } from '../../src/shared/scheduler-base.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
+const randomUUID = () => {
+    if (typeof crypto.randomUUID === 'function')
+        return randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = crypto.getRandomValues(new Uint8Array(1))[0] & 15;
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+};
 import { cronMatches } from '../../src/utils/cron.js';
 import { maskState } from '../../src/shared/mask.js';
 import { createServerSandboxGlobals, cleanupServerTimers } from './globals.js';
@@ -98,7 +106,7 @@ export class ServerScheduler extends BaseScheduler {
                 const { queues } = this.getData();
                 const queue = queues[cron.target.name];
                 if (queue) {
-                    const msg = { id: crypto.randomUUID(), body: cron.payload, timestamp: Date.now(), retries: 0 };
+                    const msg = { id: randomUUID(), body: cron.payload, timestamp: Date.now(), retries: 0 };
                     queue.messages.push(msg);
                 }
                 break;
@@ -114,7 +122,7 @@ export class ServerScheduler extends BaseScheduler {
                 const { queues } = this.getData();
                 const queue = queues[name];
                 if (queue) {
-                    const msg = { id: crypto.randomUUID(), body, timestamp: Date.now(), retries: 0 };
+                    const msg = { id: randomUUID(), body, timestamp: Date.now(), retries: 0 };
                     queue.messages.push(msg);
                 }
             },

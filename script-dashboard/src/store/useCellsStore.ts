@@ -830,7 +830,7 @@ console.log("Run count:", $state.counter);
     set(state => {
       const queue = state.queues[name];
       if (!queue) return state;
-      const msg: QueueMessage = { id: crypto.randomUUID(), body, timestamp: Date.now(), retries: 0 };
+      const msg: QueueMessage = { id: generateId(), body, timestamp: Date.now(), retries: 0 };
       const queues = { ...state.queues, [name]: { ...queue, messages: [...queue.messages, msg] } };
       persistQueues(queues);
       return { queues };
