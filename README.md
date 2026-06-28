@@ -209,6 +209,24 @@ Override: `DASHAWS_DATA_DIR=/custom/path ./start-server.sh python`
 | **PDF** | pypdf |
 | **Databases** | sqlalchemy, psycopg2-binary, pyodbc, pymssql |
 
+### Slow first install? (pip)
+
+If `pip install` downloads `.tar.gz` instead of `.whl` files, packages with C extensions (pandas, numpy, matplotlib, lxml, psycopg2-binary) will compile from source, which can take **many minutes** on low-power CPUs.
+
+**Common cause:** pip configured to use an index/extra-index (e.g. piwheels.org) that serves ARM-compiled wheels. On x86_64, those wheels are incompatible and pip falls back to source tarballs.
+
+Check and fix with:
+```bash
+# List configured indexes
+pip config list
+
+# If you see piwheels.org or other ARM indexes, remove them:
+pip config unset global.extra-index-url
+pip config unset global.index-url
+```
+
+After removing incompatible indexes, `pip install -r python-server/requirements.txt` will download pre-built x86_64 wheels from PyPI instead of compiling from source.
+
 ## Server Mode vs Standalone
 
 | Feature | Standalone (browser) | Server (Node.js) | Server (Python) |
