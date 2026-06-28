@@ -172,15 +172,23 @@ export function CellControls({ cell, onToggleParams }: Props) {
 
       {/* Right side: params, status, menu */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={onToggleParams}
-          className={`text-[10px] font-medium transition-colors ${
-            parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
-          }`}
-          title="Edit parameters ($props)"
-        >
-          {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
-        </button>
+        <span className="inline-flex items-center gap-1.5">
+          <button
+            onClick={onToggleParams}
+            className={`text-[10px] font-medium transition-colors ${
+              parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
+            }`}
+            title="Edit parameters ($props)"
+          >
+            {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
+          </button>
+          <span
+            className="text-gray-400 hover:text-gray-200 cursor-help text-xs"
+            title="Parameters define $props values passed into scripts. Other scripts can override them via $cells.run(id, { key: value }). Access them inside scripts as $props.key."
+          >
+            &#9432;
+          </span>
+        </span>
 
         <span
           className={`inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider ${

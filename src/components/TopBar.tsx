@@ -21,43 +21,57 @@ export function TopBar() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleKeepAlive}
-            title={keepAlive ? 'Keep-alive active — prevents sleep/throttling' : 'Keep-alive inactive — enable to prevent sleep'}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-colors border ${
-              keepAlive
-                ? 'bg-green-600/20 border-green-600/30 text-green-400'
-                : 'bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            <span>{keepAlive ? '⏳' : '⌛'}</span>
-            Keep alive
-          </button>
-          {hasSecrets && (
+        <div className="flex items-center gap-4">
+          <span className="inline-flex items-center gap-1.5">
             <button
-              onClick={toggleKeepUnlocked}
-              title={keepUnlocked ? 'Auto-unlock enabled — click to disable' : 'Auto-unlock disabled — click to enable'}
+              onClick={toggleKeepAlive}
               className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-colors border ${
-                keepUnlocked
-                  ? 'bg-yellow-600/20 border-yellow-600/30 text-yellow-400'
+                keepAlive
+                  ? 'bg-green-600/20 border-green-600/30 text-green-400'
                   : 'bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300'
               }`}
             >
-              <span>{keepUnlocked ? '\u{1F513}' : '\u{1F512}'}</span>
-              Keep unlocked
+              <span>{keepAlive ? '⏳' : '⌛'}</span>
+              Keep alive
+            </button>
+            <span
+              className="text-gray-400 hover:text-gray-200 cursor-help text-xs"
+              title="Keep-alive prevents the browser from sleeping or throttling script timers. It uses the Wake Lock API (keeps screen on) and a silent audio loop (prevents timer throttling in background tabs). Enable this for long-running scripts that need consistent interval timing."
+            >
+              &#9432;
+            </span>
+          </span>
+
+          {hasSecrets && (
+            <span className="inline-flex items-center gap-1.5">
+              <button
+                onClick={toggleKeepUnlocked}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-colors border ${
+                  keepUnlocked
+                    ? 'bg-yellow-600/20 border-yellow-600/30 text-yellow-400'
+                    : 'bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <span>{keepUnlocked ? '\u{1F513}' : '\u{1F512}'}</span>
+                Keep unlocked
+              </button>
+              <span
+                className="text-gray-400 hover:text-gray-200 cursor-help text-xs"
+                title="Auto-unlock keeps your secrets password in session storage, so you don't have to re-enter it on every page refresh. Secrets are decrypted automatically on load when this is active. Disable if you want to manually enter the password each time for extra security."
+              >
+                &#9432;
+              </span>
+            </span>
+          )}
+
+          {activeCount > 0 && (
+            <button
+              onClick={stopAll}
+              className="px-4 py-1.5 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
+            >
+              Stop All
             </button>
           )}
-          <div className="flex items-center gap-2">
-            {activeCount > 0 && (
-              <button
-                onClick={stopAll}
-                className="px-4 py-1.5 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
-              >
-                Stop All
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </header>

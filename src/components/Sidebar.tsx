@@ -30,13 +30,20 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
   return (
     <aside className="flex-shrink-0 w-64 bg-gray-900 border-r border-gray-700 flex flex-col min-h-0">
       <nav className="flex-shrink-0 p-3 space-y-1.5">
-        <SidebarLink active={view === 'overview'} onClick={() => onViewChange('overview')} label="Overview" />
-        <SidebarLink active={view === 'scripts'} onClick={() => onViewChange('scripts')} label="Scripts" />
-        <SidebarLink active={view === 'env'} onClick={() => onViewChange('env')} label="Environment" />
-        <SidebarLink active={view === 'secrets'} onClick={() => onViewChange('secrets')} label={`Secrets ${hasSecrets ? (secretsLocked ? '🔒' : '🔓') : ''}`} />
-        <SidebarLink active={view === 'queues'} onClick={() => onViewChange('queues')} label="Queues" />
-        <SidebarLink active={view === 'pubsub'} onClick={() => onViewChange('pubsub')} label="Pub/Sub" />
-        <SidebarLink active={view === 'crons'} onClick={() => onViewChange('crons')} label="Cronjobs" />
+        <SidebarLink active={view === 'overview'} onClick={() => onViewChange('overview')} label="Overview"
+          info="Dashboard overview showing all scripts at a glance. Monitor statuses, recent outputs, and system stats in one place." />
+        <SidebarLink active={view === 'scripts'} onClick={() => onViewChange('scripts')} label="Scripts"
+          info="Create, edit, and run JavaScript scripts on configurable intervals. Each script runs in an isolated sandbox with strict mode and blocked dangerous globals." />
+        <SidebarLink active={view === 'env'} onClick={() => onViewChange('env')} label="Environment"
+          info="Environment variables accessible inside scripts via $env.KEY. Use for non-sensitive configuration like API URLs, feature flags, and settings." />
+        <SidebarLink active={view === 'secrets'} onClick={() => onViewChange('secrets')} label={`Secrets ${hasSecrets ? (secretsLocked ? '\uD83D\uDD12' : '\uD83D\uDD13') : ''}`}
+          info="Encrypted secrets stored with AES-GCM + PBKDF2. Accessible via $secrets.KEY. Values are masked in logs to prevent leakage. Password-protected." />
+        <SidebarLink active={view === 'queues'} onClick={() => onViewChange('queues')} label="Queues"
+          info="FIFO message queues (like SQS). Scripts subscribe and process messages in order. Enqueue via $queue.enqueue(name, body) inside scripts." />
+        <SidebarLink active={view === 'pubsub'} onClick={() => onViewChange('pubsub')} label="Pub/Sub"
+          info="Broadcast event topics (like SNS). Emitting an event triggers all subscribed scripts immediately. Use $pubsub.emit(name, body) inside scripts." />
+        <SidebarLink active={view === 'crons'} onClick={() => onViewChange('crons')} label="Cronjobs"
+          info="Schedule scripts, queues, or pub/sub events using cron expressions (min hour dom month dow). Supports */n intervals, ranges, and comma-separated values. Polled every 15s." />
       </nav>
 
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />
@@ -144,12 +151,17 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
   );
 }
 
-function SidebarLink({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function SidebarLink({ active, onClick, label, info }: { active: boolean; onClick: () => void; label: string; info?: string }) {
   return (
-    <button onClick={onClick} className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors ${
+    <button onClick={onClick} className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors flex items-center gap-2 ${
       active ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
     }`}>
-      {label}
+      <span>{label}</span>
+      {info && (
+        <span className="text-gray-400 hover:text-gray-200 cursor-help text-xs flex-shrink-0" title={info}>
+          &#9432;
+        </span>
+      )}
     </button>
   );
 }
