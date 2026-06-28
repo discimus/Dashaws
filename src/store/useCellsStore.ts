@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Cell, Queue, EventTopic, QueueMessage, CronEntry } from '../types/cell';
 import { LocalStorageBackend } from './storage';
+import { ApiClient } from './api-client';
 import { generateId } from '../utils/id';
 import { cronMatches } from '../utils/cron';
 import { Scheduler } from '../sandbox/scheduler';
@@ -16,10 +17,65 @@ import {
   type EncryptedBlob,
 } from '../crypto/secrets';
 
+let apiClient: ApiClient | null = null;
+let isServerMode = false;
+
 const storage = new LocalStorageBackend();
 const ENV_STORAGE_KEY = 'script-dashboard-env';
 
 let scheduler: Scheduler | null = null;
+
+let serverPollInterval: ReturnType<typeof setInterval> | null = null;
+
+function startServerPolling() {
+  if (serverPollInterval) return;
+  serverPollInterval = setInterval(async () => {
+    if (!apiClient) return;
+    try {
+      const remote = await apiClient.list();
+      useCellsStore.setState(state => {
+        // Keep local status if we have newer data (user just toggled)
+        const merged = remote.map(r => {
+          const local = state.cells.find(c => c.id === r.id);
+          if (!local) return r;
+          // Server is source of truth for status, lastRunAt, output, state
+          // But preserve local script/name if user is editing
+          if (local.updatedAt > r.updatedAt) return local;
+          return r;
+        });
+        // Add local-only cells (just added, not yet synced)  
+        for (const c of state.cells) {
+          if (!merged.find(m => m.id === c.id)) merged.push(c);
+        }
+        return { cells: merged };
+      });
+    } catch { /* ignore polling errors */ }
+  }, 3000);
+}
+
+function stopServerPolling() {
+  if (serverPollInterval) { clearInterval(serverPollInterval); serverPollInterval = null; }
+}
+
+// Export for cleanup (e.g., page unload)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', stopServerPolling);
+}
+
+function persistQueues(queues: Record<string, Queue>) {
+  if (isServerMode && apiClient) apiClient.saveQueues(queues);
+  else saveQueues(queues);
+}
+
+function persistTopics(topics: Record<string, EventTopic>) {
+  if (isServerMode && apiClient) apiClient.saveTopics(topics);
+  else saveTopics(topics);
+}
+
+function persistCrons(crons: CronEntry[]) {
+  if (isServerMode && apiClient) apiClient.saveCrons(crons);
+  else saveCrons(crons);
+}
 
 function loadEnv(): Record<string, string> {
   try {
@@ -190,47 +246,68 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   crons: [],
 
   init: async () => {
-    const cells = await storage.list();
-    const env = loadEnv();
+    // Detect server mode
+    apiClient = new ApiClient();
+    try { isServerMode = await apiClient.health(); } catch { isServerMode = false; }
+    if (!isServerMode) apiClient = null;
+
+    let cells: Cell[];
+    let env: Record<string, string>;
+    let queues: Record<string, Queue>;
+    let eventTopics: Record<string, EventTopic>;
+    let crons: CronEntry[];
+
+    if (isServerMode && apiClient) {
+      cells = await apiClient.list();
+      env = await apiClient.getEnv();
+      queues = await apiClient.getQueues();
+      eventTopics = await apiClient.getTopics();
+      crons = await apiClient.getCrons();
+      startServerPolling();
+    } else {
+      cells = await storage.list();
+      env = loadEnv();
+      queues = loadQueues();
+      eventTopics = loadTopics();
+      crons = loadCrons();
+
+      scheduler = new Scheduler(
+        (id) => get().cells.find(c => c.id === id),
+        (id, result: ExecutionResult) => {
+          set(state => ({
+            cells: state.cells.map(c =>
+              c.id === id
+                ? {
+                    ...c,
+                    status: result.success ? 'success' : 'error',
+                    lastRunAt: Date.now(),
+                    output: [...c.output, ...result.output].slice(-200),
+                    state: result.state,
+                    updatedAt: Date.now(),
+                  }
+                : c
+            ),
+          }));
+          const updated = get().cells.find(c => c.id === id);
+          if (updated) storage.save(updated);
+        },
+        () => {
+          const state = get();
+          return {
+            env: { ...state.env },
+            secrets: secretsMaskSet(state.secrets),
+            secretsObj: { ...state.secrets },
+          };
+        },
+        (name, body) => get().enqueue(name, body),
+        (name, body) => get().emitEvent(name, body)
+      );
+
+      const running = cells.filter(c => c.enabled);
+      running.forEach(c => scheduler?.start(c.id));
+    }
+
     const blob = loadBlob();
-    const queues = loadQueues();
-    const eventTopics = loadTopics();
-    const crons = loadCrons();
-
-    scheduler = new Scheduler(
-      (id) => get().cells.find(c => c.id === id),
-      (id, result: ExecutionResult) => {
-        set(state => ({
-          cells: state.cells.map(c =>
-            c.id === id
-              ? {
-                  ...c,
-                  status: result.success ? 'success' : 'error',
-                  lastRunAt: Date.now(),
-                  output: [...c.output, ...result.output].slice(-200),
-                  state: result.state,
-                  updatedAt: Date.now(),
-                }
-              : c
-          ),
-        }));
-        const updated = get().cells.find(c => c.id === id);
-        if (updated) storage.save(updated);
-      },
-      () => {
-        const state = get();
-        return {
-          env: { ...state.env },
-          secrets: secretsMaskSet(state.secrets),
-          secretsObj: { ...state.secrets },
-        };
-      },
-      (name, body) => get().enqueue(name, body),
-      (name, body) => get().emitEvent(name, body)
-    );
-
-    const running = cells.filter(c => c.enabled);
-    running.forEach(c => scheduler?.start(c.id));
 
     let unlocked = false;
     let decrypted: Record<string, string> = {};
@@ -252,6 +329,10 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       }
     }
 
+    const runningIds = isServerMode
+      ? cells.filter(c => c.enabled).map(c => c.id)
+      : cells.filter(c => c.enabled).map(c => c.id);
+
     set({
       cells,
       loaded: true,
@@ -259,47 +340,50 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       secretsLocked: blob !== null && !unlocked,
       secrets: decrypted,
       secretsBlob: blob,
-      runningIds: running.map(c => c.id),
+      runningIds,
       queues,
       eventTopics,
       crons,
     });
 
-    setInterval(() => {
-      const state = get();
-      const now = new Date();
-      for (const cron of state.crons) {
-        if (!cron.enabled) continue;
-        if (cron.lastRunAt && now.getTime() - cron.lastRunAt < 55000) continue;
-        if (!cronMatches(cron.expression, now)) continue;
-        dispatchCron(cron, state);
-        set(s => ({
-          crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: now.getTime() } : c),
-        }));
-        saveCrons(get().crons);
-      }
-    }, 15000);
-
-    setInterval(() => {
-      const state = get();
-      for (const q of Object.values(state.queues)) {
-        if (q.messages.length === 0) continue;
-        for (const subId of q.subscriberIds) {
-          if (state.runningIds.includes(subId)) continue;
-          const cell = state.cells.find(c => c.id === subId);
-          if (!cell) continue;
-          const msg = q.messages[0];
-          scheduler?.runOnce(subId, parseMessageBody(msg.body));
-          set(s => {
-            const queues = { ...s.queues };
-            queues[q.name] = { ...queues[q.name], messages: queues[q.name].messages.slice(1) };
-            saveQueues(queues);
-            return { queues };
-          });
-          break;
+    // Cron polling — browser only; server handles its own cron scheduler
+    if (!isServerMode) {
+      setInterval(() => {
+        const state = get();
+        const now = new Date();
+        for (const cron of state.crons) {
+          if (!cron.enabled) continue;
+          if (cron.lastRunAt && now.getTime() - cron.lastRunAt < 55000) continue;
+          if (!cronMatches(cron.expression, now)) continue;
+          dispatchCron(cron, state);
+          set(s => ({
+            crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: now.getTime() } : c),
+          }));
+          saveCrons(get().crons);
         }
-      }
-    }, 2000);
+      }, 15000);
+
+      setInterval(() => {
+        const state = get();
+        for (const q of Object.values(state.queues)) {
+          if (q.messages.length === 0) continue;
+          for (const subId of q.subscriberIds) {
+            if (state.runningIds.includes(subId)) continue;
+            const cell = state.cells.find(c => c.id === subId);
+            if (!cell) continue;
+            const msg = q.messages[0];
+            scheduler?.runOnce(subId, parseMessageBody(msg.body));
+            set(s => {
+              const queues = { ...s.queues };
+              queues[q.name] = { ...queues[q.name], messages: queues[q.name].messages.slice(1) };
+              saveQueues(queues);
+              return { queues };
+            });
+            break;
+          }
+        }
+      }, 2000);
+    }
   },
 
   addCell: async () => {
@@ -326,7 +410,8 @@ console.log("Run count:", $state.counter);
       createdAt: now,
       updatedAt: now,
     };
-    await storage.save(cell);
+    if (isServerMode && apiClient) await apiClient.save(cell);
+    else await storage.save(cell);
     set(state => ({ cells: [...state.cells, cell] }));
   },
 
@@ -338,21 +423,28 @@ console.log("Run count:", $state.counter);
     }));
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
-      await storage.save(cell);
-
-      if (updates.intervalMs !== undefined && scheduler?.isRunning(id)) {
-        scheduler.restart(id);
+      if (isServerMode && apiClient) {
+        await apiClient.save(cell);
+      } else {
+        await storage.save(cell);
+        if (updates.intervalMs !== undefined && scheduler?.isRunning(id)) {
+          scheduler.restart(id);
+        }
       }
     }
   },
 
   deleteCell: async (id) => {
-    scheduler?.stop(id);
+    if (isServerMode && apiClient) {
+      await apiClient.delete(id);
+    } else {
+      scheduler?.stop(id);
+      await storage.delete(id);
+    }
     set(state => ({
       cells: state.cells.filter(c => c.id !== id),
       runningIds: state.runningIds.filter(rid => rid !== id),
     }));
-    await storage.delete(id);
   },
 
   startCell: (id) => {
@@ -364,13 +456,22 @@ console.log("Run count:", $state.counter);
     }));
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
-      storage.save(cell);
-      scheduler?.start(id);
+      if (isServerMode && apiClient) {
+        apiClient.save(cell);
+        apiClient.startCell(id);
+      } else {
+        storage.save(cell);
+        scheduler?.start(id);
+      }
     }
   },
 
   stopCell: (id) => {
-    scheduler?.stop(id);
+    if (isServerMode && apiClient) {
+      apiClient.stopCell(id);
+    } else {
+      scheduler?.stop(id);
+    }
     set(state => ({
       cells: state.cells.map(c =>
         c.id === id ? { ...c, enabled: false, updatedAt: Date.now() } : c
@@ -379,7 +480,8 @@ console.log("Run count:", $state.counter);
     }));
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
-      storage.save(cell);
+      if (isServerMode && apiClient) apiClient.save(cell);
+      else storage.save(cell);
     }
   },
 
@@ -394,13 +496,24 @@ console.log("Run count:", $state.counter);
       };
     });
     for (const cell of get().cells) {
-      storage.save({ ...cell, enabled: true });
-      scheduler?.start(cell.id);
+      if (isServerMode && apiClient) {
+        apiClient.save({ ...cell, enabled: true });
+        apiClient.startCell(cell.id);
+      } else {
+        storage.save({ ...cell, enabled: true });
+        scheduler?.start(cell.id);
+      }
     }
   },
 
   stopAll: () => {
-    scheduler?.stopAll();
+    if (isServerMode && apiClient) {
+      for (const cell of get().cells) {
+        if (cell.enabled) apiClient.stopCell(cell.id);
+      }
+    } else {
+      scheduler?.stopAll();
+    }
     set(state => ({
       cells: state.cells.map(c =>
         c.enabled ? { ...c, enabled: false, updatedAt: Date.now() } : c
@@ -408,17 +521,33 @@ console.log("Run count:", $state.counter);
       runningIds: [],
     }));
     for (const cell of get().cells) {
-      storage.save({ ...cell, enabled: false });
+      if (isServerMode && apiClient) apiClient.save({ ...cell, enabled: false });
+      else storage.save({ ...cell, enabled: false });
     }
   },
 
   runOnce: (id) => {
-    if (scheduler) {
-      set(state => ({
-        cells: state.cells.map(c =>
-          c.id === id ? { ...c, status: 'running' as const } : c
-        ),
-      }));
+    set(state => ({
+      cells: state.cells.map(c =>
+        c.id === id ? { ...c, status: 'running' as const } : c
+      ),
+    }));
+    if (isServerMode && apiClient) {
+      apiClient.runOnce(id).then(result => {
+        set(state => ({
+          cells: state.cells.map(c =>
+            c.id === id ? {
+              ...c,
+              status: result.success ? 'success' : 'error',
+              lastRunAt: Date.now(),
+              output: [...c.output, ...result.output].slice(-200),
+              state: result.state,
+              updatedAt: Date.now(),
+            } : c
+          ),
+        }));
+      }).catch(() => {});
+    } else if (scheduler) {
       scheduler.runOnce(id);
     }
   },
@@ -431,14 +560,16 @@ console.log("Run count:", $state.counter);
     }));
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
-      storage.save(cell);
+      if (isServerMode && apiClient) apiClient.save(cell);
+      else storage.save(cell);
     }
   },
 
   setEnvVar: (key, value) => {
     set(state => {
       const env = { ...state.env, [key]: value };
-      saveEnv(env);
+      if (isServerMode && apiClient) apiClient.saveEnv(env);
+      else saveEnv(env);
       return { env };
     });
   },
@@ -446,7 +577,8 @@ console.log("Run count:", $state.counter);
   deleteEnvVar: (key) => {
     set(state => {
       const { [key]: _, ...env } = state.env;
-      saveEnv(env);
+      if (isServerMode && apiClient) apiClient.saveEnv(env);
+      else saveEnv(env);
       return { env };
     });
   },
@@ -566,8 +698,14 @@ console.log("Run count:", $state.counter);
           ),
           runningIds: state.runningIds.includes(id) ? state.runningIds : [...state.runningIds, id],
         }));
-        storage.save(get().cells.find(c => c.id === id)!);
-        scheduler?.start(id);
+        const updated = get().cells.find(c => c.id === id)!;
+        if (isServerMode && apiClient) {
+          apiClient.save(updated);
+          apiClient.startCell(id);
+        } else {
+          storage.save(updated);
+          scheduler?.start(id);
+        }
       }
     }
   },
@@ -577,14 +715,17 @@ console.log("Run count:", $state.counter);
     for (const id of ids) {
       const cell = get().cells.find(c => c.id === id);
       if (cell?.enabled) {
-        scheduler?.stop(id);
+        if (isServerMode && apiClient) apiClient.stopCell(id);
+        else scheduler?.stop(id);
         set(state => ({
           cells: state.cells.map(c =>
             c.id === id ? { ...c, enabled: false, updatedAt: Date.now() } : c
           ),
           runningIds: state.runningIds.filter(rid => rid !== id),
         }));
-        storage.save(get().cells.find(c => c.id === id)!);
+        const updated = get().cells.find(c => c.id === id)!;
+        if (isServerMode && apiClient) apiClient.save(updated);
+        else storage.save(updated);
       }
     }
   },
@@ -592,8 +733,8 @@ console.log("Run count:", $state.counter);
   deleteSelected: () => {
     const ids = get().selectedIds;
     for (const id of ids) {
-      scheduler?.stop(id);
-      storage.delete(id);
+      if (isServerMode && apiClient) apiClient.delete(id);
+      else { scheduler?.stop(id); storage.delete(id); }
     }
     set(state => ({
       cells: state.cells.filter(c => !ids.includes(c.id)),
@@ -606,7 +747,7 @@ console.log("Run count:", $state.counter);
     set(state => {
       if (state.queues[name]) return state;
       const queues = { ...state.queues, [name]: { name, maxRetries, subscriberIds: [], messages: [] } };
-      saveQueues(queues);
+      persistQueues(queues);
       return { queues };
     });
   },
@@ -614,7 +755,7 @@ console.log("Run count:", $state.counter);
   deleteQueue: (name) => {
     set(state => {
       const { [name]: _, ...queues } = state.queues;
-      saveQueues(queues);
+      persistQueues(queues);
       return { queues };
     });
   },
@@ -625,7 +766,7 @@ console.log("Run count:", $state.counter);
       if (!queue) return state;
       const msg: QueueMessage = { id: crypto.randomUUID(), body, timestamp: Date.now(), retries: 0 };
       const queues = { ...state.queues, [name]: { ...queue, messages: [...queue.messages, msg] } };
-      saveQueues(queues);
+      persistQueues(queues);
       return { queues };
     });
   },
@@ -635,7 +776,7 @@ console.log("Run count:", $state.counter);
       const queue = state.queues[queueName];
       if (!queue || queue.subscriberIds.includes(cellId)) return state;
       const queues = { ...state.queues, [queueName]: { ...queue, subscriberIds: [...queue.subscriberIds, cellId] } };
-      saveQueues(queues);
+      persistQueues(queues);
       return { queues };
     });
   },
@@ -645,7 +786,7 @@ console.log("Run count:", $state.counter);
       const queue = state.queues[queueName];
       if (!queue) return state;
       const queues = { ...state.queues, [queueName]: { ...queue, subscriberIds: queue.subscriberIds.filter(id => id !== cellId) } };
-      saveQueues(queues);
+      persistQueues(queues);
       return { queues };
     });
   },
@@ -654,7 +795,7 @@ console.log("Run count:", $state.counter);
     set(state => {
       if (state.eventTopics[name]) return state;
       const eventTopics = { ...state.eventTopics, [name]: { name, subscriberIds: [] } };
-      saveTopics(eventTopics);
+      persistTopics(eventTopics);
       return { eventTopics };
     });
   },
@@ -662,18 +803,21 @@ console.log("Run count:", $state.counter);
   deleteEventTopic: (name) => {
     set(state => {
       const { [name]: _, ...eventTopics } = state.eventTopics;
-      saveTopics(eventTopics);
+      persistTopics(eventTopics);
       return { eventTopics };
     });
   },
 
   emitEvent: (name, body) => {
-    set(state => state); // no-op on state, just trigger
     const state = get();
     const topic = state.eventTopics[name];
     if (!topic) return;
-    for (const cellId of topic.subscriberIds) {
-      scheduler?.runOnce(cellId, parseMessageBody(body));
+    if (isServerMode && apiClient) {
+      apiClient.emitEvent(name, body);
+    } else {
+      for (const cellId of topic.subscriberIds) {
+        scheduler?.runOnce(cellId, parseMessageBody(body));
+      }
     }
   },
 
@@ -682,7 +826,7 @@ console.log("Run count:", $state.counter);
       const topic = state.eventTopics[topicName];
       if (!topic || topic.subscriberIds.includes(cellId)) return state;
       const eventTopics = { ...state.eventTopics, [topicName]: { ...topic, subscriberIds: [...topic.subscriberIds, cellId] } };
-      saveTopics(eventTopics);
+      persistTopics(eventTopics);
       return { eventTopics };
     });
   },
@@ -692,7 +836,7 @@ console.log("Run count:", $state.counter);
       const topic = state.eventTopics[topicName];
       if (!topic) return state;
       const eventTopics = { ...state.eventTopics, [topicName]: { ...topic, subscriberIds: topic.subscriberIds.filter(id => id !== cellId) } };
-      saveTopics(eventTopics);
+      persistTopics(eventTopics);
       return { eventTopics };
     });
   },
@@ -700,7 +844,7 @@ console.log("Run count:", $state.counter);
   addCron: (entry) => {
     set(state => {
       const crons = [...state.crons, { ...entry, lastRunAt: null }];
-      saveCrons(crons);
+      persistCrons(crons);
       return { crons };
     });
   },
@@ -708,7 +852,7 @@ console.log("Run count:", $state.counter);
   deleteCron: (name) => {
     set(state => {
       const crons = state.crons.filter(c => c.name !== name);
-      saveCrons(crons);
+      persistCrons(crons);
       return { crons };
     });
   },
@@ -716,7 +860,7 @@ console.log("Run count:", $state.counter);
   toggleCron: (name) => {
     set(state => {
       const crons = state.crons.map(c => c.name === name ? { ...c, enabled: !c.enabled } : c);
-      saveCrons(crons);
+      persistCrons(crons);
       return { crons };
     });
   },
@@ -729,7 +873,7 @@ console.log("Run count:", $state.counter);
     set(s => ({
       crons: s.crons.map(c => c.name === name ? { ...c, lastRunAt: Date.now() } : c),
     }));
-    saveCrons(get().crons);
+    persistCrons(get().crons);
   },
 
   editCron: (name, updates) => {
@@ -737,7 +881,7 @@ console.log("Run count:", $state.counter);
       const crons = state.crons.map(c =>
         c.name === name ? { ...c, ...updates, target: updates.target ?? c.target } : c
       );
-      saveCrons(crons);
+      persistCrons(crons);
       return { crons };
     });
   },
@@ -748,14 +892,18 @@ function dispatchCron(cron: CronEntry, state: ReturnType<typeof useCellsStore.ge
   switch (cron.target.type) {
     case 'cell': {
       const cell = state.cells.find(c => c.name === cron.target.name || c.id === cron.target.name);
-      if (cell) scheduler?.runOnce(cell.id, props);
+      if (cell) {
+        if (isServerMode && apiClient) apiClient.runOnce(cell.id, props);
+        else scheduler?.runOnce(cell.id, props);
+      }
       break;
     }
     case 'queue':
       state.enqueue(cron.target.name, cron.payload);
       break;
     case 'pubsub':
-      state.emitEvent(cron.target.name, cron.payload);
+      if (isServerMode && apiClient) apiClient.emitEvent(cron.target.name, cron.payload);
+      else state.emitEvent(cron.target.name, cron.payload);
       break;
   }
 }

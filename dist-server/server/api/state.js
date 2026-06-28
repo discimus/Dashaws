@@ -1,12 +1,17 @@
 import { FileStorageBackend } from '../storage/file-storage.js';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { ServerScheduler } from '../sandbox/scheduler.js';
+import { parseMessageBody } from '../../src/shared/parse.js';
 const storage = new FileStorageBackend();
 const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
 export let serverEnv = {};
 export let serverQueues = {};
 export let serverEventTopics = {};
 export let serverCrons = [];
+export let cells = [];
+export let scheduler = null;
+export { storage };
 export function initServerState() {
     if (!existsSync(DATA_DIR))
         mkdirSync(DATA_DIR, { recursive: true });
@@ -43,5 +48,59 @@ export function savePersistedState() {
     writeFileSync(join(DATA_DIR, 'topics.json'), JSON.stringify(serverEventTopics, null, 2));
     writeFileSync(join(DATA_DIR, 'crons.json'), JSON.stringify(serverCrons, null, 2));
 }
-export { storage };
+export async function syncCell(cell) {
+    await storage.save(cell);
+    const idx = cells.findIndex(c => c.id === cell.id);
+    if (idx >= 0) {
+        cells[idx] = cell;
+    }
+    else {
+        cells.push(cell);
+    }
+    if (scheduler && cell.enabled) {
+        if (scheduler.getRunningIds().includes(cell.id)) {
+            scheduler.restart(cell.id);
+        }
+        else {
+            scheduler.start(cell.id);
+        }
+    }
+}
+export async function removeCell(id) {
+    await storage.delete(id);
+    scheduler?.stop(id);
+    const idx = cells.findIndex(c => c.id === id);
+    if (idx >= 0)
+        cells.splice(idx, 1);
+}
+export async function initServer() {
+    initServerState();
+    cells = await storage.list();
+    const onEmit = (name, body) => {
+        const topic = serverEventTopics[name];
+        if (!topic)
+            return;
+        for (const cellId of topic.subscriberIds) {
+            const cell = cells.find(c => c.id === cellId);
+            if (cell)
+                scheduler?.runOnce(cellId, parseMessageBody(body));
+        }
+    };
+    scheduler = new ServerScheduler((id) => cells.find(c => c.id === id), async (id, result) => {
+        const cell = cells.find(c => c.id === id);
+        if (cell) {
+            cell.status = result.success ? 'success' : 'error';
+            cell.lastRunAt = Date.now();
+            cell.output = [...(cell.output || []), ...result.output].slice(-200);
+            cell.state = result.state;
+            await storage.save(cell);
+        }
+    }, () => ({ env: { ...serverEnv }, secrets: new Set(), secretsObj: {} }), () => ({ queues: serverQueues, eventTopics: serverEventTopics, crons: serverCrons }), onEmit);
+    const running = cells.filter(c => c.enabled);
+    for (const cell of running) {
+        scheduler.start(cell.id);
+    }
+    scheduler.startQueuePolling();
+    scheduler.startCronPolling();
+}
 //# sourceMappingURL=state.js.map
