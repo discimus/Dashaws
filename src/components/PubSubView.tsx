@@ -104,7 +104,6 @@ export function PubSubView() {
               </div>
 
               <div className="mt-3">
-                <div style={{ height: 52 }} className="border border-gray-500 rounded overflow-hidden">
                   <JsonInput
                     value={testMessages[t.name] || '{\n  "key": "value"\n}'}
                     onChange={val => setTestMessages(prev => ({ ...prev, [t.name]: val }))}
@@ -113,7 +112,6 @@ export function PubSubView() {
                       setTestMessages(prev => ({ ...prev, [t.name]: '' }));
                     }}
                   />
-                </div>
                 <button
                   onClick={() => { emitEvent(t.name, testMessages[t.name] || ''); setTestMessages(prev => ({ ...prev, [t.name]: '' })); }}
                   disabled={!testMessages[t.name]?.trim()}

@@ -117,7 +117,6 @@ export function QueuesView() {
               </div>
 
               <div className="mt-3">
-                <div style={{ height: 52 }} className="border border-gray-500 rounded overflow-hidden">
                   <JsonInput
                     value={testMessages[q.name] || '{\n  "key": "value"\n}'}
                     onChange={val => setTestMessages(prev => ({ ...prev, [q.name]: val }))}
@@ -126,7 +125,6 @@ export function QueuesView() {
                       setTestMessages(prev => ({ ...prev, [q.name]: '' }));
                     }}
                   />
-                </div>
                 <button
                   onClick={() => { enqueue(q.name, testMessages[q.name] || ''); setTestMessages(prev => ({ ...prev, [q.name]: '' })); }}
                   disabled={!testMessages[q.name]?.trim()}

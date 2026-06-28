@@ -110,9 +110,7 @@ export function CronView() {
           </div>
           <div>
             <span className="text-[10px] text-gray-500 mb-1 block">Payload (JSON)</span>
-            <div style={{ height: 52 }} className="border border-gray-500 rounded overflow-hidden">
-              <JsonInput value={newPayload} onChange={setNewPayload} />
-            </div>
+            <JsonInput value={newPayload} onChange={setNewPayload} />
           </div>
           <button onClick={handleAdd} disabled={!newName.trim() || !newExpr.trim() || !newTargetName.trim()}
             className="px-4 py-2 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-40">
@@ -169,9 +167,7 @@ export function CronView() {
                       {targetOptions(editTargetType).map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
                     </select>
                   </div>
-                  <div style={{ height: 52 }} className="border border-gray-500 rounded overflow-hidden">
-                    <JsonInput value={editPayload} onChange={setEditPayload} />
-                  </div>
+                  <JsonInput value={editPayload} onChange={setEditPayload} />
                   <div className="flex gap-1">
                     <button onClick={() => setEditingCron(null)}
                       className="flex-1 px-2 py-1 rounded text-[10px] font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">Cancel</button>
