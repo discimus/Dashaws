@@ -11,6 +11,7 @@ import { PubSubView } from './components/PubSubView';
 import { CronView } from './components/CronView';
 import { HelpView } from './components/HelpView';
 import { Toast } from './components/Toast';
+import { InsecureContextBanner } from './components/InsecureContextBanner';
 
 export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons' | 'help';
 
@@ -41,6 +42,7 @@ export default function App() {
   return (
     <div className="h-screen bg-gray-900 text-gray-100 overflow-hidden">
       <TopBar />
+      <InsecureContextBanner />
       <div className="flex h-full pt-12">
         <Sidebar view={view} onViewChange={setView} onEditCell={navigateToEditor} />
         <main className="flex-1 overflow-y-auto px-4 pb-4 bg-gray-800">
