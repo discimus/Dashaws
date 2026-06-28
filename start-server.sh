@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
+if command -v bash >/dev/null 2>&1 && [ -n "$BASH_VERSION" ]; then set -o pipefail; fi
 
 usage() {
     echo "Usage: ./start-server.sh <python|node> [port]"
@@ -13,6 +14,41 @@ usage() {
     echo "  ./start-server.sh python"
     echo "  ./start-server.sh node 4000"
 }
+
+# --- Helpers ---
+
+check_frontend_build() {
+    if [ -f "dist/index.html" ]; then
+        return 0
+    fi
+    echo "[preflight] Frontend not built (dist/ missing). Building..."
+    if [ ! -d "node_modules" ]; then
+        echo "[preflight] Installing npm dependencies first..."
+        npm install
+    fi
+    npm run build:all
+    echo "[preflight] Frontend build complete."
+}
+
+check_python_deps() {
+    if python3 -c "import fastapi, uvicorn" 2>/dev/null; then
+        return 0
+    fi
+    echo "[preflight] Python dependencies not installed. Installing..."
+    pip install -r python-server/requirements.txt
+    echo "[preflight] Python dependencies installed."
+}
+
+check_node_deps() {
+    if [ -d "node_modules" ]; then
+        return 0
+    fi
+    echo "[preflight] Node modules not installed. Installing..."
+    npm install
+    echo "[preflight] Node modules installed."
+}
+
+# --- Main ---
 
 RUNTIME="${1:-}"
 PORT="${2:-${PORT:-3456}}"
@@ -38,12 +74,18 @@ case "$RUNTIME" in
             echo "ERROR: python-server/ directory not found."
             exit 1
         fi
+        check_python_deps
+        check_frontend_build
+        echo ""
         exec python3 python-server/main.py
         ;;
     node)
         echo "=== Dashaws Node.js Server ==="
         echo "Port: $PORT"
         echo "Data: ${DASHAWS_DATA_DIR:-data-nodejs}"
+        echo ""
+        check_node_deps
+        check_frontend_build
         echo ""
         exec npx tsx server/index.ts
         ;;
