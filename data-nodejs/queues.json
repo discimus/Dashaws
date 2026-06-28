@@ -1,0 +1,17 @@
+{
+  "asdf": {
+    "name": "asdf",
+    "maxRetries": 0,
+    "subscriberIds": [
+      "b02ba7c8-07ac-436f-9e1e-1acb6bb54722"
+    ],
+    "messages": [
+      {
+        "id": "fddccd97-6a0c-47ea-8cb1-c8c1d2e07d0c",
+        "body": "{\n  \"name\": \"Maria Brown\"\n}",
+        "timestamp": 1782679541974,
+        "retries": 0
+      }
+    ]
+  }
+}

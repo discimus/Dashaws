@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll } from './state.js';
+import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll, serverLanguages } from './state.js';
 import type { Cell } from '../../src/types/cell.js';
 
 export function createApiRouter(): Router {
@@ -7,6 +7,10 @@ export function createApiRouter(): Router {
 
   router.get('/health', (_req: Request, res: Response) => {
     res.json({ ok: true, timestamp: Date.now() });
+  });
+
+  router.get('/languages', (_req: Request, res: Response) => {
+    res.json(serverLanguages);
   });
 
   router.get('/cells', async (_req: Request, res: Response) => {

@@ -9,6 +9,7 @@ export type CellStatus = 'idle' | 'running' | 'success' | 'error';
 export interface Cell {
   id: string;
   name: string;
+  language: 'javascript' | 'python';
   script: string;
   intervalMs: number;
   enabled: boolean;

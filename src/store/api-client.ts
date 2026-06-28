@@ -27,6 +27,14 @@ export class ApiClient implements StorageBackend {
     }
   }
 
+  async getLanguages(): Promise<string[]> {
+    try {
+      return await this.fetch('/languages');
+    } catch {
+      return ['javascript'];
+    }
+  }
+
   // StorageBackend implementation
 
   async list(): Promise<Cell[]> {

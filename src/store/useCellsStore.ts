@@ -183,6 +183,7 @@ interface CellsState {
   queues: Record<string, Queue>;
   eventTopics: Record<string, EventTopic>;
   crons: CronEntry[];
+  languages: string[];
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -251,6 +252,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   queues: {},
   eventTopics: {},
   crons: [],
+  languages: ['javascript'],
 
   init: async () => {
     // Detect server mode
@@ -263,6 +265,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     let queues: Record<string, Queue>;
     let eventTopics: Record<string, EventTopic>;
     let crons: CronEntry[];
+    let languages = ['javascript'];
 
     if (isServerMode && apiClient) {
       cells = await apiClient.list();
@@ -270,6 +273,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       queues = await apiClient.getQueues();
       eventTopics = await apiClient.getTopics();
       crons = await apiClient.getCrons();
+      languages = await apiClient.getLanguages();
       startServerPolling();
     } else {
       cells = await storage.list();
@@ -366,6 +370,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       queues,
       eventTopics,
       crons,
+      languages,
     });
 
     // Cron polling — browser only; server handles its own cron scheduler
@@ -415,10 +420,19 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
 
   addCell: async () => {
     const now = Date.now();
-    const cell: Cell = {
-      id: generateId(),
-      name: `Script ${get().cells.length + 1}`,
-      script: `// Click ? Help for the full reference
+    const defaultLang = get().languages[0] || 'javascript';
+    const isPython = defaultLang === 'python';
+    const defaultScript = isPython
+      ? `# Click ? Help for the full reference
+#
+# Quick globals: state props env secrets queue pubsub print console requests
+
+print("Hello!")
+
+state["counter"] = state.get("counter", 0) + 1
+print("Run count:", state["counter"])
+`
+      : `// Click ? Help for the full reference
 //
 // Quick globals: $state $env $secrets $props $queue $pubsub fetch console loadPackage setTimeout signal
 
@@ -426,7 +440,12 @@ console.log("Hello!");
 
 $state.counter = ($state.counter || 0) + 1;
 console.log("Run count:", $state.counter);
-`,
+`;
+    const cell: Cell = {
+      id: generateId(),
+      name: `Script ${get().cells.length + 1}`,
+      language: defaultLang as 'javascript' | 'python',
+      script: defaultScript,
       intervalMs: 10000,
       enabled: false,
       lastRunAt: null,

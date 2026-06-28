@@ -8,7 +8,7 @@ import type { EncryptedBlob } from '../../src/crypto/secrets.js';
 import { decryptSecrets } from '../../src/crypto/secrets.js';
 
 const storage = new FileStorageBackend();
-const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data');
+const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data-nodejs');
 
 export let serverEnv: Record<string, string> = {};
 export let serverSecretsBlob: EncryptedBlob | null = null;
@@ -20,6 +20,7 @@ export let serverCrons: CronEntry[] = [];
 export let cells: Cell[] = [];
 export let scheduler: ServerScheduler | null = null;
 export let autoDisabledCronNames: Set<string> = new Set();
+export let serverLanguages: string[] = ['javascript'];
 export { storage };
 
 export function initServerState(): void {

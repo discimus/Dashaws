@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll } from './state.js';
+import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll, serverLanguages } from './state.js';
 export function createApiRouter() {
     const router = Router();
     router.get('/health', (_req, res) => {
         res.json({ ok: true, timestamp: Date.now() });
+    });
+    router.get('/languages', (_req, res) => {
+        res.json(serverLanguages);
     });
     router.get('/cells', async (_req, res) => {
         res.json(cells);

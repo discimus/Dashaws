@@ -70,6 +70,154 @@ $pubsub.emit("my-topic", JSON.stringify({
         </SubSection>
       </Section>
 
+      <Section title="Python Scripts (server mode)">
+        <p>When running the <strong>Python server</strong> (<Code>./start-server.sh python</Code>), scripts are written in Python with these globals and libraries available:</p>
+
+        <SubSection title="print" type="builtin">
+          Replaces the standard <Code>print()</Code> — output is captured and displayed per-script instead of going to the server console.
+          <Example>{`print("Hello!")
+print("Counter:", state["counter"])
+
+# sep and end are supported
+print("a", "b", "c", sep=", ")`}</Example>
+        </SubSection>
+
+        <SubSection title="console" type="Console API (alias)">
+          Available as an alias for familiarity: <Code>console.log()</Code>, <Code>console.warn()</Code>, <Code>console.error()</Code>, <Code>console.info()</Code>, <Code>console.table()</Code>.
+        </SubSection>
+
+        <SubSection title="requests" type="HTTP client">
+          Full <Code>requests</Code> module for HTTP calls. Use <Code>requests.get()</Code>, <Code>requests.post()</Code>, <Code>requests.put()</Code>, etc. Returns a Response object with <Code>.status_code</Code>, <Code>.text</Code>, <Code>.json()</Code>, <Code>.headers</Code>.
+          <Example>{`# GET request
+resp = requests.get("https://api.example.com/data")
+print(resp.status_code)
+data = resp.json()
+
+# POST with JSON
+resp = requests.post("https://api.example.com/items", json={"name": "test"})
+
+# Authenticated request
+resp = requests.get("https://api.example.com",
+    headers={"Authorization": "Bearer " + secrets.get("API_KEY", "")})`}</Example>
+        </SubSection>
+
+        <SubSection title="Available libraries" type="import">
+          <p>These libraries are installed and available via <Code>import</Code>. Each listed library comes from the Python standard library or is pre-installed in the server environment.</p>
+
+          <h4 className="mt-3 mb-1 text-xs font-semibold text-yellow-300">Web & HTTP</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-300">
+            <div><Code>requests</Code> — HTTP client (get/post/put)</div>
+            <div><Code>beautifulsoup4</Code> — HTML scraping and parsing</div>
+            <div><Code>feedparser</Code> — RSS / Atom feed parsing</div>
+            <div><Code>xmltodict</Code> — XML to dict conversion</div>
+            <div><Code>lxml</Code> — fast XML / HTML parser</div>
+            <div><Code>xml.etree</Code> — stdlib XML (ElementTree)</div>
+          </div>
+
+          <h4 className="mt-3 mb-1 text-xs font-semibold text-yellow-300">Data & Documents</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-300">
+            <div><Code>pandas</Code> — data analysis / DataFrames</div>
+            <div><Code>numpy</Code> — numerical computing</div>
+            <div><Code>openpyxl</Code> — Excel .xlsx read/write</div>
+            <div><Code>pypdf</Code> — PDF text extraction</div>
+            <div><Code>pyyaml</Code> — YAML config parsing</div>
+            <div><Code>python-dotenv</Code> — .env file loading</div>
+            <div><Code>json</Code>, <Code>csv</Code> — stdlib parsers</div>
+            <div><Code>datetime</Code>, <Code>time</Code> — stdlib dates</div>
+          </div>
+
+          <h4 className="mt-3 mb-1 text-xs font-semibold text-yellow-300">Databases</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-300">
+            <div><Code>sqlalchemy</Code> — SQL ORM (unified API)</div>
+            <div><Code>psycopg2</Code> — PostgreSQL adapter</div>
+            <div><Code>pymssql</Code> — SQL Server adapter</div>
+            <div><Code>pyodbc</Code> — ODBC (SQL Server, etc.)</div>
+          </div>
+
+          <h4 className="mt-3 mb-1 text-xs font-semibold text-yellow-300">Charts</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-300">
+            <div><Code>matplotlib</Code> — charts saved as PNG</div>
+            <div><Code>pillow</Code> — image processing</div>
+          </div>
+
+          <p className="mt-3 text-gray-400">Use standard <Code>import</Code> statements — any installed Python package is available.</p>
+          <Example>{`import pandas as pd
+import numpy as np
+import sqlalchemy as sa
+import matplotlib.pyplot as plt
+from bs4 import BeautifulSoup
+import yaml
+
+# Read Excel
+df = pd.read_excel("data.xlsx")
+print(df.head())
+
+# PostgreSQL with SQLAlchemy
+engine = sa.create_engine("postgresql://user:pass@host/db")
+df = pd.read_sql("SELECT * FROM users LIMIT 10", engine)
+print(df)
+
+# SQL Server with pyodbc
+engine = sa.create_engine("mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+17+for+SQL+Server")
+df.to_sql("export", engine, if_exists="replace")
+
+# RSS feed
+import feedparser
+feed = feedparser.parse("https://example.com/rss")
+for entry in feed.entries:
+    print(entry.title, entry.link)
+
+# YAML config
+config = yaml.safe_load(open("config.yml"))
+print(config["settings"])
+
+# Chart to PNG
+plt.figure()
+plt.plot([1, 2, 3], [4, 5, 6])
+plt.savefig("/tmp/chart.png")`}</Example>
+        </SubSection>
+
+        <SubSection title="Sandbox globals" type="Python">
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+            <div><Code>print(...)</Code> — captured output</div>
+            <div><Code>console.log/warn/error/info/table</Code> — JS alias</div>
+            <div><Code>requests</Code> — HTTP client module</div>
+            <div><Code>state</Code> — dict, mutable, persisted</div>
+            <div><Code>props</Code> — dict, from params/queue/pubsub</div>
+            <div><Code>env</Code> — dict, environment variables</div>
+            <div><Code>secrets</Code> — dict, encrypted secrets</div>
+            <div><Code>queue.enqueue(name, body)</Code> — enqueue message</div>
+            <div><Code>pubsub.emit(name, body)</Code> — emit event</div>
+          </div>
+        </SubSection>
+
+        <SubSection title="Full example" type="Python">
+          <Example>{`# Python script example
+print("Hello!")
+
+state["counter"] = state.get("counter", 0) + 1
+print("Run count:", state["counter"])
+
+# HTTP with requests
+resp = requests.get("https://api.github.com/zen")
+print("GitHub zen:", resp.text.strip())
+
+# Environment variables
+api_url = env.get("API_URL", "https://default.example.com")
+
+# Secrets
+token = secrets.get("API_KEY", "")
+resp = requests.get(api_url,
+    headers={"Authorization": "Bearer " + token})
+
+# Enqueue a message
+queue.enqueue("my-queue", {"task": "process", "id": 42})
+
+# Emit an event
+pubsub.emit("my-topic", {"event": "completed"})`}</Example>
+        </SubSection>
+      </Section>
+
       <Section title="Standard Globals">
         <SubSection title="console" type="Console API">
           <table className="mt-2 w-full text-xs border-collapse">

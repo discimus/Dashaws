@@ -5,7 +5,7 @@ import { ServerScheduler } from '../sandbox/scheduler.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
 import { decryptSecrets } from '../../src/crypto/secrets.js';
 const storage = new FileStorageBackend();
-const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data');
+const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data-nodejs');
 export let serverEnv = {};
 export let serverSecretsBlob = null;
 export let serverSecrets = {};
@@ -16,6 +16,7 @@ export let serverCrons = [];
 export let cells = [];
 export let scheduler = null;
 export let autoDisabledCronNames = new Set();
+export let serverLanguages = ['javascript'];
 export { storage };
 export function initServerState() {
     if (!existsSync(DATA_DIR))
