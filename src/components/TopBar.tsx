@@ -9,7 +9,7 @@ export function TopBar() {
     <header className="fixed top-0 left-0 right-0 bg-gray-900 border-b border-gray-700 h-12 flex items-center z-30">
       <div className="flex items-center justify-between w-full px-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-base font-bold tracking-tight">Script Dashboard</h1>
+          <h1 className="text-base font-bold tracking-tight">Dashaws</h1>
           <span className="text-xs text-gray-500">
             {cells.length} script{cells.length !== 1 ? 's' : ''}
           </span>

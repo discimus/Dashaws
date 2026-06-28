@@ -1,6 +1,6 @@
 import type { StorageBackend, Cell } from '../types/cell';
 
-const STORAGE_KEY = 'script-dashboard-cells';
+const STORAGE_KEY = 'dashaws-cells';
 
 export class LocalStorageBackend implements StorageBackend {
   async list(): Promise<Cell[]> {

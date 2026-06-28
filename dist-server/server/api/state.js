@@ -5,7 +5,7 @@ import { ServerScheduler } from '../sandbox/scheduler.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
 import { decryptSecrets } from '../../src/crypto/secrets.js';
 const storage = new FileStorageBackend();
-const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
+const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data');
 export let serverEnv = {};
 export let serverSecretsBlob = null;
 export let serverSecrets = {};

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
+const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data');
 const CELLS_FILE = join(DATA_DIR, 'cells.json');
 function ensureDir() {
     if (!existsSync(DATA_DIR))

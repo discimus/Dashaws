@@ -1,4 +1,4 @@
-const SECRETS_STORAGE_KEY = 'script-dashboard-secrets-blob';
+const SECRETS_STORAGE_KEY = 'dashaws-secrets-blob';
 const PBKDF2_ITERATIONS = 200_000;
 const KEY_LENGTH_BITS = 256;
 const SALT_BYTES = 32;

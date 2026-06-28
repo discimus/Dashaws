@@ -1,4 +1,4 @@
-# Script Dashboard
+# Dashaws
 
 A local-first dashboard for scheduling and executing user-defined JavaScript scripts on intervals, cron expressions, queues, and pub/sub events. Supports standalone browser mode and optional server mode for background execution.
 
@@ -136,7 +136,7 @@ data/
 └── cells/             Individual script storage (one JSON file per script)
 ```
 
-Override the data directory: `SCRIPT_DASHBOARD_DATA_DIR=/custom/path npm run start:server`
+Override the data directory: `DASHAWS_DATA_DIR=/custom/path npm run start:server`
 
 ## API Endpoints
 

@@ -21,7 +21,7 @@ let apiClient: ApiClient | null = null;
 let isServerMode = false;
 
 const storage = new LocalStorageBackend();
-const ENV_STORAGE_KEY = 'script-dashboard-env';
+const ENV_STORAGE_KEY = 'dashaws-env';
 
 let scheduler: Scheduler | null = null;
 
@@ -99,8 +99,8 @@ function secretsMaskSet(values: Record<string, string>): Set<string> {
 }
 
 let cachedSecretsPassword: string | null = null;
-const UNLOCKED_KEY = 'script-dashboard-keep-unlocked';
-const SESSION_PW_KEY = 'script-dashboard-session-pw';
+const UNLOCKED_KEY = 'dashaws-keep-unlocked';
+const SESSION_PW_KEY = 'dashaws-session-pw';
 
 function loadKeepUnlocked(): boolean {
   try {
@@ -134,8 +134,8 @@ function clearSessionPassword(): void {
   } catch { /* noop */ }
 }
 
-const QUEUE_STORAGE_KEY = 'script-dashboard-queues';
-const TOPIC_STORAGE_KEY = 'script-dashboard-topics';
+const QUEUE_STORAGE_KEY = 'dashaws-queues';
+const TOPIC_STORAGE_KEY = 'dashaws-topics';
 
 function loadQueues(): Record<string, Queue> {
   try { return JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) || '{}'); } catch { return {}; }
@@ -153,7 +153,7 @@ function saveTopics(t: Record<string, EventTopic>) {
   localStorage.setItem(TOPIC_STORAGE_KEY, JSON.stringify(t));
 }
 
-const CRON_STORAGE_KEY = 'script-dashboard-crons';
+const CRON_STORAGE_KEY = 'dashaws-crons';
 
 function loadCrons(): CronEntry[] {
   try {

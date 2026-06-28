@@ -8,7 +8,7 @@ import type { EncryptedBlob } from '../../src/crypto/secrets.js';
 import { decryptSecrets } from '../../src/crypto/secrets.js';
 
 const storage = new FileStorageBackend();
-const DATA_DIR = process.env.SCRIPT_DASHBOARD_DATA_DIR || join(process.cwd(), 'data');
+const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data');
 
 export let serverEnv: Record<string, string> = {};
 export let serverSecretsBlob: EncryptedBlob | null = null;
