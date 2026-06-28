@@ -95,7 +95,7 @@ export function PubSubView() {
                     onChange={e => { if (e.target.value) { addEventSubscriber(t.name, e.target.value); e.target.value = ''; } }}
                     className="mt-1.5 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-[10px] outline-none w-full"
                   >
-                    <option value="">+ Add subscriber cell...</option>
+                      <option value="">+ Add subscriber script...</option>
                     {cells.filter(c => !t.subscriberIds.includes(c.id)).map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}

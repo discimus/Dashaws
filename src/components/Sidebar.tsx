@@ -42,7 +42,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
       <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />
 
       <div className="flex-shrink-0 px-3 py-2 flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Cells</span>
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Scripts</span>
         <div className="flex items-center gap-1">
           {selectedIds.length > 0 && (
             <button onClick={clearSelection} className="text-[9px] text-gray-500 hover:text-gray-300 transition-colors">
@@ -68,7 +68,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
             )}
             <ConfirmPopover
               open={confirmDeleteAll}
-              message={`Delete ${selectedIds.length} cell${selectedIds.length !== 1 ? 's' : ''}?`}
+                message={`Delete ${selectedIds.length} script${selectedIds.length !== 1 ? 's' : ''}?`}
               onConfirm={() => { deleteSelected(); setConfirmDeleteAll(false); }}
               onCancel={() => setConfirmDeleteAll(false)}
             />
@@ -136,7 +136,7 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           </div>
         ) : (
           <button onClick={addCell} className="w-full px-4 py-2.5 rounded text-sm font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors">
-            + Add Cell
+            + Add Script
           </button>
         )}
       </div>

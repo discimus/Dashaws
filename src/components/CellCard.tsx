@@ -17,7 +17,7 @@ export function CellCard({ cell, highlighted }: Props) {
 
   return (
     <div className={`border rounded-lg overflow-hidden bg-gray-700/30 hover:border-gray-500 transition-colors ${
-      highlighted ? 'cell-flash' : 'border-gray-600'
+      highlighted ? 'script-flash' : 'border-gray-600'
     }`}>
       <div className="px-3 py-2 border-b border-gray-600 bg-gray-700/70">
         <CellControls cell={cell} onToggleParams={() => setShowParams(!showParams)} />
@@ -32,7 +32,7 @@ export function CellCard({ cell, highlighted }: Props) {
       <CellEditor cell={cell} />
 
       <div className="px-3 py-1 border-t border-gray-600 bg-gray-700/70 flex items-center justify-between text-[10px] text-gray-300">
-        <span>Cell ID: {cell.id.slice(0, 8)}...</span>
+        <span>Script ID: {cell.id.slice(0, 8)}...</span>
         <span>
           {cell.lastRunAt ? `Last run: ${formatTimeAgo(cell.lastRunAt)}` : 'Not run yet'}
           {cell.enabled && ` · Every ${formatInterval(cell.intervalMs)}`}

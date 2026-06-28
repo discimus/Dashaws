@@ -38,7 +38,7 @@ export function PromptModal({ open, onConfirm, onCancel, error }: Props) {
       >
         <h3 className="text-sm font-semibold text-gray-200 mb-1">Secrets Locked</h3>
         <p className="text-xs text-gray-400 mb-3">
-          Enter your secrets password to unlock and run this cell.
+          Enter your secrets password to unlock and run this script.
         </p>
 
         <input

@@ -20,6 +20,8 @@ export function CronView() {
   const [editPayload, setEditPayload] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
+  const targetTypeLabel = (t: 'cell' | 'queue' | 'pubsub') => t === 'cell' ? 'script' : t === 'pubsub' ? 'pub/sub' : t;
+
   const handleAdd = () => {
     if (!newName.trim() || !newExpr.trim() || !newTargetName.trim()) return;
     addCron({
@@ -100,11 +102,11 @@ export function CronView() {
           <div className="flex gap-2 items-end">
             <select value={newTargetType} onChange={e => { setNewTargetType(e.target.value as typeof newTargetType); setNewTargetName(''); }}
               className="bg-gray-800 border border-gray-500 rounded px-3 py-2 text-sm outline-none">
-              <option value="cell">Cell</option><option value="queue">Queue</option><option value="pubsub">Pub/Sub</option>
+              <option value="cell">Script</option><option value="queue">Queue</option><option value="pubsub">Pub/Sub</option>
             </select>
             <select value={newTargetName} onChange={e => setNewTargetName(e.target.value)}
               className="flex-1 bg-gray-800 border border-gray-500 rounded px-3 py-2 text-sm outline-none">
-              <option value="">Select {newTargetType}...</option>
+              <option value="">Select {targetTypeLabel(newTargetType)}...</option>
               {targetOptions(newTargetType).map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
             </select>
           </div>
@@ -159,11 +161,11 @@ export function CronView() {
                   <div className="flex gap-2">
                     <select value={editTargetType} onChange={e => { setEditTargetType(e.target.value as typeof editTargetType); setEditTargetName(''); }}
                       className="bg-gray-800 border border-gray-500 rounded px-2 py-1.5 text-xs outline-none">
-                      <option value="cell">Cell</option><option value="queue">Queue</option><option value="pubsub">Pub/Sub</option>
+                      <option value="cell">Script</option><option value="queue">Queue</option><option value="pubsub">Pub/Sub</option>
                     </select>
                     <select value={editTargetName} onChange={e => setEditTargetName(e.target.value)}
                       className="flex-1 bg-gray-800 border border-gray-500 rounded px-2 py-1.5 text-xs outline-none">
-                      <option value="">Select {editTargetType}...</option>
+                      <option value="">Select {targetTypeLabel(editTargetType)}...</option>
                       {targetOptions(editTargetType).map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
                     </select>
                   </div>
@@ -187,7 +189,7 @@ export function CronView() {
                       cron.target.type === 'cell' ? 'bg-blue-600/20 text-blue-400' :
                       cron.target.type === 'queue' ? 'bg-orange-600/20 text-orange-400' :
                       'bg-pink-600/20 text-pink-400'
-                    }`}>{cron.target.type}</span>
+                    }`}>{targetTypeLabel(cron.target.type)}</span>
                     <span className="text-gray-300">{targetLabel(cron.target)}</span>
                   </div>
                   {cron.lastRunAt && (

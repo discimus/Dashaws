@@ -11,7 +11,7 @@ export function TopBar() {
         <div className="flex items-center gap-3">
           <h1 className="text-base font-bold tracking-tight">Script Dashboard</h1>
           <span className="text-xs text-gray-500">
-            {cells.length} cell{cells.length !== 1 ? 's' : ''}
+            {cells.length} script{cells.length !== 1 ? 's' : ''}
           </span>
           {activeCount > 0 && (
             <span className="text-xs text-yellow-500 flex items-center gap-1">

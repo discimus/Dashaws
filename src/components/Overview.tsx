@@ -15,12 +15,12 @@ export function Overview({ onEditCell }: Props) {
     return (
       <div className="text-center py-20">
         <div className="text-gray-400 mb-2 text-4xl">&#9633;</div>
-        <p className="text-gray-400 mb-4">No cells yet. Create your first script cell.</p>
+        <p className="text-gray-400 mb-4">No scripts yet. Create your first script.</p>
         <button
           onClick={addCell}
           className="px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
         >
-          + Add Cell
+          + Add Script
         </button>
       </div>
     );
@@ -33,13 +33,13 @@ export function Overview({ onEditCell }: Props) {
     <div>
       <div className="sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
         <div className="grid grid-cols-4 gap-3">
-          <StatBox label="Cells" value={cells.length} color="text-blue-400" />
+          <StatBox label="Scripts" value={cells.length} color="text-blue-400" />
           <StatBox label="Running" value={runningIds.length} color="text-yellow-400" />
           <StatBox label="Success" value={successCount} color="text-green-400" />
           <StatBox label="Errors" value={errorCount} color={errorCount > 0 ? 'text-red-400' : 'text-gray-500'} />
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Cells</h2>
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Scripts</h2>
           <span className="text-xs text-gray-400">{cells.length} total</span>
         </div>
       </div>

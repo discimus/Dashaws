@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-@keyframes cell-flash {
+@keyframes script-flash {
   0%   { border-color: rgb(59 130 246 / 0.6); box-shadow: 0 0 0 2px rgb(59 130 246 / 0.35); }
   30%  { border-color: rgb(96 165 250 / 0.9); box-shadow: 0 0 0 4px rgb(96 165 250 / 0.5); }
   100% { border-color: rgb(59 130 246 / 0);   box-shadow: 0 0 0 0 rgb(59 130 246 / 0); }
 }
 
-.cell-flash {
-  animation: cell-flash 1.2s ease-out forwards;
+.script-flash {
+  animation: script-flash 1.2s ease-out forwards;
 }
 
 /* Autocomplete tooltip */
