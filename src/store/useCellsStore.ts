@@ -33,8 +33,8 @@ function startServerPolling() {
     if (!apiClient) return;
     try {
       const remote = await apiClient.list();
+      const remoteCrons = await apiClient.getCrons();
       useCellsStore.setState(state => {
-        // Keep local status if we have newer data (user just toggled)
         const merged = remote.map(r => {
           const local = state.cells.find(c => c.id === r.id);
           if (!local) return r;
@@ -47,7 +47,7 @@ function startServerPolling() {
         for (const c of state.cells) {
           if (!merged.find(m => m.id === c.id)) merged.push(c);
         }
-        return { cells: merged };
+        return { cells: merged, crons: remoteCrons };
       });
     } catch { /* ignore polling errors */ }
   }, 3000);
@@ -230,6 +230,13 @@ interface CellsState {
   editCron: (name: string, updates: Partial<Omit<CronEntry, 'name'>>) => void;
 }
 
+export function cronTargetsSecrets(cron: CronEntry, cells: Cell[]): boolean {
+  if (cron.target.type !== 'cell') return false;
+  const cell = cells.find(c => c.id === cron.target.name || c.name === cron.target.name);
+  if (!cell) return false;
+  return /\$secrets[\.\[]\s*['"\w]/.test(cell.script);
+}
+
 export const useCellsStore = create<CellsState>()((set, get) => ({
   cells: [],
   loaded: false,
@@ -256,7 +263,6 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     let queues: Record<string, Queue>;
     let eventTopics: Record<string, EventTopic>;
     let crons: CronEntry[];
-    let serverSecrets: Record<string, string> | null = null;
 
     if (isServerMode && apiClient) {
       cells = await apiClient.list();
@@ -265,7 +271,6 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
       eventTopics = await apiClient.getTopics();
       crons = await apiClient.getCrons();
       startServerPolling();
-      try { serverSecrets = await apiClient.getSecrets(); } catch { /* ignore */ }
     } else {
       cells = await storage.list();
       env = loadEnv();
@@ -314,11 +319,8 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     let unlocked = false;
     let decrypted: Record<string, string> = {};
 
-    if (isServerMode && serverSecrets && Object.keys(serverSecrets).length > 0) {
-      // Server has secrets — authoritative source, treat as unlocked
-      decrypted = serverSecrets;
-      unlocked = true;
-    } else if (blob && loadKeepUnlocked()) {
+    // Try auto-unlock via sessionStorage if keepUnlocked is enabled
+    if (blob && loadKeepUnlocked()) {
       const sessionPw = loadSessionPassword();
       if (sessionPw) {
         try {
@@ -327,15 +329,26 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
             decrypted = await decryptSecrets(blob, sessionPw);
             cachedSecretsPassword = sessionPw;
             unlocked = true;
-            // Bootstrap: server didn't have secrets, sync now
-            if (isServerMode && apiClient) {
-              apiClient.saveSecrets(decrypted);
-            }
           }
         } catch {
           clearSessionPassword();
         }
       }
+    }
+
+    // In server mode, sync unlock state to server
+    if (isServerMode && apiClient) {
+      try {
+        const status = await apiClient.getSecretsStatus();
+        if (unlocked) {
+          if (!status.hasBlob) {
+            await apiClient.putSecretsBlob(blob!);
+          }
+          if (!status.unlocked) {
+            await apiClient.unlockSecrets(cachedSecretsPassword!);
+          }
+        }
+      } catch { /* ignore */ }
     }
 
     const runningIds = isServerMode
@@ -611,9 +624,9 @@ console.log("Run count:", $state.counter);
         saveSessionPassword(password);
       }
       set({ secretsLocked: false, secrets: values });
-      // Sync to server so background crons can access $secrets
+      // Sync password to server so it can decrypt its own copy of the blob
       if (isServerMode && apiClient) {
-        apiClient.saveSecrets(values);
+        apiClient.unlockSecrets(password);
       }
       return true;
     } catch {
@@ -625,6 +638,9 @@ console.log("Run count:", $state.counter);
     cachedSecretsPassword = null;
     clearSessionPassword();
     set({ secretsLocked: true, secrets: {} });
+    if (isServerMode && apiClient) {
+      apiClient.lockSecrets();
+    }
   },
 
   setSecret: async (key, value) => {
@@ -639,7 +655,7 @@ console.log("Run count:", $state.counter);
     saveBlob(blob);
     set({ secrets: newValues, secretsBlob: blob });
     if (isServerMode && apiClient) {
-      apiClient.saveSecrets(newValues);
+      apiClient.putSecretsBlob(blob);
     }
   },
 
@@ -655,7 +671,7 @@ console.log("Run count:", $state.counter);
     saveBlob(blob);
     set({ secrets: newValues, secretsBlob: blob });
     if (isServerMode && apiClient) {
-      apiClient.saveSecrets(newValues);
+      apiClient.putSecretsBlob(blob);
     }
   },
 
@@ -668,7 +684,8 @@ console.log("Run count:", $state.counter);
     }
     set({ secretsLocked: false, secrets: {}, secretsBlob: blob });
     if (isServerMode && apiClient) {
-      apiClient.saveSecrets({});
+      apiClient.putSecretsBlob(blob);
+      apiClient.unlockSecrets(password);
     }
   },
 
@@ -678,7 +695,7 @@ console.log("Run count:", $state.counter);
     clearSessionPassword();
     set({ secretsLocked: true, secrets: {}, secretsBlob: null });
     if (isServerMode && apiClient) {
-      apiClient.saveSecrets({});
+      apiClient.deleteSecretsAll();
     }
   },
 
@@ -873,7 +890,12 @@ console.log("Run count:", $state.counter);
 
   addCron: (entry) => {
     set(state => {
-      const crons = [...state.crons, { ...entry, lastRunAt: null }];
+      // If secrets are locked and this cron targets a script using $secrets, start disabled
+      const shouldDisable = state.secretsLocked && entry.target.type === 'cell' && (() => {
+        const cell = state.cells.find(c => c.id === entry.target.name || c.name === entry.target.name);
+        return cell ? /\$secrets[\.\[]\s*['"\w]/.test(cell.script) : false;
+      })();
+      const crons = [...state.crons, { ...entry, lastRunAt: null, enabled: shouldDisable ? false : entry.enabled }];
       persistCrons(crons);
       return { crons };
     });
@@ -888,6 +910,15 @@ console.log("Run count:", $state.counter);
   },
 
   toggleCron: (name) => {
+    const state = get();
+    const cron = state.crons.find(c => c.name === name);
+    if (!cron) return;
+
+    // Prevent enabling a cron targeting a secret-using script when secrets are locked
+    if (!cron.enabled && state.secretsLocked && cronTargetsSecrets(cron, state.cells)) {
+      return;
+    }
+
     set(state => {
       const crons = state.crons.map(c => c.name === name ? { ...c, enabled: !c.enabled } : c);
       persistCrons(crons);

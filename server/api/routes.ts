@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { serverEnv, serverSecrets, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage } from './state.js';
+import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll } from './state.js';
 import type { Cell } from '../../src/types/cell.js';
 
 export function createApiRouter(): Router {
@@ -72,13 +72,40 @@ export function createApiRouter(): Router {
     res.json(serverEnv);
   });
 
-  router.get('/secrets', (_req: Request, res: Response) => res.json(serverSecrets));
+  router.get('/secrets/status', (_req: Request, res: Response) => {
+    res.json({
+      hasBlob: serverSecretsBlob !== null,
+      unlocked: serverSecretsPassword !== null && Object.keys(serverSecrets).length > 0,
+    });
+  });
 
-  router.put('/secrets', (req: Request, res: Response) => {
-    Object.assign(serverSecrets, req.body);
-    for (const k of Object.keys(serverSecrets)) { if (!(k in req.body)) delete serverSecrets[k]; }
-    savePersistedState();
-    res.json(serverSecrets);
+  router.post('/secrets/unlock', async (req: Request, res: Response) => {
+    const { password } = req.body || {};
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Password required' });
+    }
+    const ok = await unlockSecrets(password);
+    if (!ok) return res.status(401).json({ error: 'Invalid password or no blob stored' });
+    res.json({ ok: true });
+  });
+
+  router.post('/secrets/lock', (_req: Request, res: Response) => {
+    lockSecrets();
+    res.json({ ok: true });
+  });
+
+  router.put('/secrets', async (req: Request, res: Response) => {
+    const blob = req.body;
+    if (!blob || !blob.iv || !blob.data || !blob.salt || !blob.hash) {
+      return res.status(400).json({ error: 'Invalid encrypted blob' });
+    }
+    await setSecretsBlob(blob);
+    res.json({ ok: true });
+  });
+
+  router.delete('/secrets', (_req: Request, res: Response) => {
+    clearSecretsAll();
+    res.json({ ok: true });
   });
 
   router.get('/queues', (_req: Request, res: Response) => res.json(serverQueues));
@@ -112,7 +139,11 @@ export function createApiRouter(): Router {
   router.put('/crons', (req: Request, res: Response) => {
     serverCrons.length = 0;
     serverCrons.push(...(req.body || []));
-    savePersistedState();
+    if (serverSecretsBlob && !serverSecretsPassword) {
+      lockSecrets(); // Re-applies auto-disable for any secret-dependent crons
+    } else {
+      savePersistedState();
+    }
     res.json(serverCrons);
   });
 

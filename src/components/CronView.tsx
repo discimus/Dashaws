@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useCellsStore } from '../store/useCellsStore';
+import { useCellsStore, cronTargetsSecrets } from '../store/useCellsStore';
 import { cronDescribe } from '../utils/cron';
 import { JsonInput } from './JsonInput';
 import { ConfirmPopover } from './ConfirmPopover';
 import type { CronTarget } from '../types/cell';
 
 export function CronView() {
-  const { crons, cells, queues, eventTopics, addCron, deleteCron, toggleCron, runCronNow, editCron } = useCellsStore();
+  const { crons, cells, queues, eventTopics, addCron, deleteCron, toggleCron, runCronNow, editCron, secretsLocked } = useCellsStore();
   const [openAdd, setOpenAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newExpr, setNewExpr] = useState('*/5 * * * *');
@@ -125,13 +125,21 @@ export function CronView() {
         <div className="text-center py-12 text-gray-400"><p className="text-sm">No cronjobs defined yet.</p></div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {crons.map(cron => (
+          {crons.map(cron => {
+            const lockedBySecrets = secretsLocked && cronTargetsSecrets(cron, cells);
+            const toggleDisabled = lockedBySecrets && !cron.enabled;
+            return (
             <div key={cron.name} className={`border rounded-lg p-4 transition-colors ${
               cron.enabled ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-700/10 border-gray-700/50 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => toggleCron(cron.name)} className="text-sm">
+                  <button
+                    onClick={() => toggleCron(cron.name)}
+                    disabled={toggleDisabled}
+                    className={`text-sm ${toggleDisabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
+                    title={lockedBySecrets ? 'Secrets locked — must unlock secrets to enable this cron' : undefined}
+                  >
                     {cron.enabled ? '\u25C9' : '\u25CB'}
                   </button>
                   <span className="text-sm font-medium text-gray-200">{cron.name}</span>
@@ -198,7 +206,8 @@ export function CronView() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

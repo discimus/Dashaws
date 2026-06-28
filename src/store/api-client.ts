@@ -1,5 +1,6 @@
 import type { Cell, StorageBackend, Queue, EventTopic, CronEntry } from '../types/cell';
 import type { ExecutionResult } from '../sandbox/executor';
+import type { EncryptedBlob } from '../crypto/secrets';
 
 export class ApiClient implements StorageBackend {
   private baseUrl: string;
@@ -136,15 +137,36 @@ export class ApiClient implements StorageBackend {
 
   // Secrets
 
-  async getSecrets(): Promise<Record<string, string>> {
-    return this.fetch('/secrets');
+  async getSecretsStatus(): Promise<{ hasBlob: boolean; unlocked: boolean }> {
+    return this.fetch('/secrets/status');
   }
 
-  async saveSecrets(secrets: Record<string, string>): Promise<void> {
+  async unlockSecrets(password: string): Promise<boolean> {
+    try {
+      await this.fetch('/secrets/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async lockSecrets(): Promise<void> {
+    await this.fetch('/secrets/lock', { method: 'POST' });
+  }
+
+  async putSecretsBlob(blob: EncryptedBlob): Promise<void> {
     await this.fetch('/secrets', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(secrets),
+      body: JSON.stringify(blob),
     });
+  }
+
+  async deleteSecretsAll(): Promise<void> {
+    await this.fetch('/secrets', { method: 'DELETE' });
   }
 }

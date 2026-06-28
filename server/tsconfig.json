@@ -26,7 +26,8 @@
     "../src/shared/executor-core.ts",
     "../src/shared/scheduler-base.ts",
     "../src/shared/blocked-globals.ts",
-    "../src/shared/strip-constructors.ts"
+    "../src/shared/strip-constructors.ts",
+    "../src/crypto/secrets.ts"
   ],
   "exclude": ["../node_modules"]
 }
