@@ -29,5 +29,5 @@
     "../src/shared/strip-constructors.ts",
     "../src/crypto/secrets.ts"
   ],
-  "exclude": ["../node_modules"]
+  "exclude": ["../node_modules", "./**/*.test.ts", "../src/**/*.test.ts"]
 }

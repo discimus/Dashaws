@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
 import { useToastStore } from '../store/toastStore';
 import { ConfirmPopover } from './ConfirmPopover';
+import { copyToClipboard } from '../utils/clipboard';
 
 export function SecretsView() {
   const {
@@ -217,7 +218,7 @@ export function SecretsView() {
                             {key}
                           </code>
                           <button
-                            onClick={() => { navigator.clipboard.writeText(key); useToastStore.getState().show('Copied!'); }}
+                            onClick={() => { copyToClipboard(key); useToastStore.getState().show('Copied!'); }}
                             title="Copy name"
                             className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
                           >

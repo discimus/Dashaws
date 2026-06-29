@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
 import { useToastStore } from '../store/toastStore';
 import { ConfirmPopover } from './ConfirmPopover';
+import { copyToClipboard } from '../utils/clipboard';
 
 export function EnvView() {
   const { env, setEnvVar, deleteEnvVar } = useCellsStore();
@@ -50,7 +51,7 @@ export function EnvView() {
                         {key}
                       </code>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(key); useToastStore.getState().show('Copied!'); }}
+                        onClick={() => { copyToClipboard(key); useToastStore.getState().show('Copied!'); }}
                         title="Copy name"
                         className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
                       >
@@ -63,7 +64,7 @@ export function EnvView() {
                       <span className="text-gray-300 font-mono text-xs break-all">{value || <span className="text-gray-500 italic">empty</span>}</span>
                       {value && (
                         <button
-                          onClick={() => { navigator.clipboard.writeText(value); useToastStore.getState().show('Copied!'); }}
+                          onClick={() => { copyToClipboard(value); useToastStore.getState().show('Copied!'); }}
                           title="Copy value"
                           className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
                         >
