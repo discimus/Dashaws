@@ -23,6 +23,54 @@ function Show-Usage {
     Write-Host "  .\start-server.ps1 -Runtime node -Port 4000"
 }
 
+function Check-FrontendBuild {
+    if (Test-Path -LiteralPath (Join-Path $projectDir "dist\index.html")) {
+        return
+    }
+    Write-Host "[preflight] Frontend not built (dist/ missing). Building..."
+    Set-Location $projectDir
+    if (-not (Test-Path -LiteralPath (Join-Path $projectDir "node_modules"))) {
+        Write-Host "[preflight] Installing npm dependencies first..."
+        npm install
+        if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
+    }
+    npm run build:all
+    if ($LASTEXITCODE -ne 0) { Write-Error "Frontend build failed"; exit 1 }
+    Write-Host "[preflight] Frontend build complete."
+}
+
+function Check-PythonDeps {
+    Set-Location $projectDir
+    $check = @"
+import fastapi, uvicorn, apscheduler, pycryptodome
+import requests, feedparser, bs4, dotenv, xmltodict, pypdf
+import pandas, numpy, lxml, yaml, openpyxl, matplotlib
+import sqlalchemy, psycopg2, pytest
+"@
+    $result = python3 -c $check 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[preflight] Python dependencies OK."
+        return
+    }
+    Write-Host "[preflight] Python dependencies missing or incomplete. Installing..."
+    pip3 install -r python-server/requirements.txt
+    if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit 1 }
+    Write-Host "[preflight] Python dependencies installed."
+}
+
+function Check-NodeDeps {
+    Set-Location $projectDir
+    if (Test-Path -LiteralPath (Join-Path $projectDir "node_modules")) {
+        return
+    }
+    Write-Host "[preflight] Node modules not installed. Installing..."
+    npm install
+    if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
+    Write-Host "[preflight] Node modules installed."
+}
+
+# --- Main ---
+
 if ($Runtime -eq "") {
     Show-Usage
     exit 1
@@ -43,6 +91,9 @@ switch ($Runtime) {
             Write-Error "python-server/ directory not found."
             exit 1
         }
+        Check-PythonDeps
+        Check-FrontendBuild
+        Write-Host ""
         python3 "$pythonServerDir\main.py"
     }
     "node" {
@@ -51,6 +102,9 @@ switch ($Runtime) {
         Write-Host "Data: $env:DASHAWS_DATA_DIR"
         Write-Host ""
         Set-Location $projectDir
+        Check-NodeDeps
+        Check-FrontendBuild
+        Write-Host ""
         npx tsx server/index.ts
     }
 }

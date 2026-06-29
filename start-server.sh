@@ -31,11 +31,18 @@ check_frontend_build() {
 }
 
 check_python_deps() {
-    if python3 -c "import fastapi, uvicorn" 2>/dev/null; then
+    # Verify key dependency groups — if any fails, run full pip install
+    if python3 -c "
+import fastapi, uvicorn, apscheduler, pycryptodome
+import requests, feedparser, bs4, dotenv, xmltodict, pypdf
+import pandas, numpy, lxml, yaml, openpyxl, matplotlib
+import sqlalchemy, psycopg2, pytest
+" 2>/dev/null; then
+        echo "[preflight] Python dependencies OK."
         return 0
     fi
-    echo "[preflight] Python dependencies not installed. Installing..."
-    pip install -r python-server/requirements.txt
+    echo "[preflight] Python dependencies missing or incomplete. Installing..."
+    pip3 install -r python-server/requirements.txt
     echo "[preflight] Python dependencies installed."
 }
 
