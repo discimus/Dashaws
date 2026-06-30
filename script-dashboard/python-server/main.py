@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from api.routes import router as api_router
-from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons
+from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all
 
 
 @asynccontextmanager
@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
     if scheduler:
         await scheduler.shutdown()
+    await flush_all()
+    print("Shutdown complete.")
 
 
 app = FastAPI(

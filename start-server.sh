@@ -33,7 +33,8 @@ check_frontend_build() {
 check_python_deps() {
     # Verify key dependency groups — if any fails, run full pip install
     if python3 -c "
-import fastapi, uvicorn, apscheduler, pycryptodome
+import fastapi, uvicorn, apscheduler
+from Crypto.Cipher import AES
 import requests, feedparser, bs4, dotenv, xmltodict, pypdf
 import pandas, numpy, lxml, yaml, openpyxl, matplotlib
 import sqlalchemy, psycopg2, pytest
