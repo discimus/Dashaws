@@ -161,8 +161,10 @@ export function CellEditor({ cell }: Props) {
     const current = view.state.doc.toString();
     if (cell.script !== current) {
       isExternalUpdateRef.current = true;
+      const cursor = view.state.selection.main.head;
       view.dispatch({
         changes: { from: 0, to: current.length, insert: cell.script },
+        selection: { anchor: Math.min(cursor, cell.script.length) },
       });
     }
   }, [cell.script]);
