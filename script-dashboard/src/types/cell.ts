@@ -20,6 +20,8 @@ export interface Cell {
   params: string;
   createdAt: number;
   updatedAt: number;
+  lockedBy?: string | null;
+  lockedAt?: number | null;
 }
 
 export interface QueueMessage {

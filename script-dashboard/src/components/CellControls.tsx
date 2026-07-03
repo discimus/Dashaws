@@ -23,7 +23,7 @@ const INTERVAL_PRESETS = [
 ];
 
 export function CellControls({ cell, onToggleParams }: Props) {
-  const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked, tryUnlockSecrets } =
+  const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked, tryUnlockSecrets, clientId } =
     useCellsStore();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState(cell.name);
@@ -33,6 +33,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isRunning = runningIds.includes(cell.id);
+  const lockedByOther = cell.lockedBy != null && cell.lockedBy !== clientId;
 
   let parsedCount = 0;
   try { parsedCount = Object.keys(JSON.parse(cell.params || '{}')).length; } catch { /* invalid */ }
@@ -124,12 +125,17 @@ export function CellControls({ cell, onToggleParams }: Props) {
         />
       ) : (
         <span
-          className="text-sm font-medium cursor-pointer hover:text-blue-400 flex-shrink-0"
+          className={`text-sm font-medium flex-shrink-0 ${
+            lockedByOther
+              ? 'text-gray-500 cursor-not-allowed'
+              : 'cursor-pointer hover:text-blue-400'
+          }`}
           onClick={() => {
+            if (lockedByOther) return;
             setEditingName(cell.name);
             setIsEditingName(true);
           }}
-          title="Click to rename"
+          title={lockedByOther ? 'Locked by another client' : 'Click to rename'}
         >
           {cell.name}
         </span>
@@ -214,6 +220,17 @@ export function CellControls({ cell, onToggleParams }: Props) {
           />
           {cell.status}
         </span>
+
+        {cell.lockedBy && (
+          <span
+            className={`text-[10px] font-medium ${
+              cell.lockedBy === clientId ? 'text-blue-400' : 'text-yellow-400'
+            }`}
+            title={cell.lockedBy === clientId ? 'You are editing this script' : `Locked by client ${cell.lockedBy}`}
+          >
+            {cell.lockedBy === clientId ? '\u270F\uFE0F' : '\u{1F512}'}
+          </span>
+        )}
 
         <div ref={menuRef} className="relative">
           <button

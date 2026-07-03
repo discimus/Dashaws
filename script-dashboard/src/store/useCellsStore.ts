@@ -38,6 +38,10 @@ function startServerPolling() {
         const merged = remote.map(r => {
           const local = state.cells.find(c => c.id === r.id);
           if (!local) return r;
+          // If we hold the lock, keep our local script/name content
+          if (r.lockedBy && r.lockedBy === state.clientId) {
+            return { ...r, script: local.script, name: local.name, updatedAt: local.updatedAt };
+          }
           // Server is source of truth for status, lastRunAt, output, state
           // But preserve local script/name if user is editing
           if (local.updatedAt > r.updatedAt) return local;
@@ -184,6 +188,8 @@ interface CellsState {
   eventTopics: Record<string, EventTopic>;
   crons: CronEntry[];
   languages: string[];
+  clientId: string;
+  editingCellId: string | null;
 
   init: () => Promise<void>;
   addCell: () => Promise<void>;
@@ -197,6 +203,9 @@ interface CellsState {
   clearOutput: (id: string) => void;
   setEnvVar: (key: string, value: string) => void;
   deleteEnvVar: (key: string) => void;
+
+  lockCell: (id: string) => Promise<boolean>;
+  unlockCell: (id: string) => Promise<void>;
 
   tryUnlockSecrets: (password: string) => Promise<boolean>;
   lockSecrets: () => void;
@@ -253,6 +262,8 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   eventTopics: {},
   crons: [],
   languages: ['javascript'],
+  clientId: Math.random().toString(36).substring(2, 10),
+  editingCellId: null,
 
   init: async () => {
     // Detect server mode
@@ -462,6 +473,14 @@ console.log("Run count:", $state.counter);
   },
 
   updateCell: async (id, updates) => {
+    const state = get();
+    const existing = state.cells.find(c => c.id === id);
+    // If cell is locked by another client, reject updates to script/name/params
+    if (existing?.lockedBy && existing.lockedBy !== state.clientId) {
+      if ('script' in updates || 'name' in updates || 'params' in updates) return;
+      // Allow non-content updates (like intervalMs) through
+    }
+
     set(state => ({
       cells: state.cells.map(c =>
         c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c
@@ -470,7 +489,9 @@ console.log("Run count:", $state.counter);
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
       if (isServerMode && apiClient) {
-        await apiClient.save(cell);
+        try {
+          await apiClient.save(cell);
+        } catch { /* ignore server rejection (e.g. locked by other) */ }
       } else {
         await storage.save(cell);
         if (updates.intervalMs !== undefined && scheduler?.isRunning(id)) {
@@ -609,6 +630,40 @@ console.log("Run count:", $state.counter);
       if (isServerMode && apiClient) apiClient.save(cell);
       else storage.save(cell);
     }
+  },
+
+  lockCell: async (id) => {
+    const state = get();
+    if (!isServerMode || !apiClient) {
+      set({ editingCellId: id });
+      return true;
+    }
+
+    if (state.editingCellId && state.editingCellId !== id) {
+      await state.unlockCell(state.editingCellId);
+    }
+
+    try {
+      const result = await apiClient.lockCell(id, state.clientId);
+      if (result.ok) {
+        set({ editingCellId: id });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  unlockCell: async (id) => {
+    if (!isServerMode || !apiClient) {
+      set(s => s.editingCellId === id ? { editingCellId: null } : {});
+      return;
+    }
+    try {
+      await apiClient.unlockCell(id, get().clientId);
+    } catch { /* ignore */ }
+    set(s => s.editingCellId === id ? { editingCellId: null } : {});
   },
 
   setEnvVar: (key, value) => {

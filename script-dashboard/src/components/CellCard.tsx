@@ -14,10 +14,12 @@ interface Props {
 
 export function CellCard({ cell, highlighted }: Props) {
   const [showParams, setShowParams] = useState(false);
+  const clientId = useCellsStore(s => s.clientId);
+  const lockedByOther = cell.lockedBy != null && cell.lockedBy !== clientId;
 
   return (
-    <div className={`border rounded-lg overflow-hidden bg-gray-700/30 hover:border-gray-500 transition-colors ${
-      highlighted ? 'script-flash' : 'border-gray-600'
+    <div className={`border rounded-lg overflow-hidden bg-gray-700/30 transition-colors ${
+      highlighted ? 'script-flash' : lockedByOther ? 'border-yellow-600/70' : 'border-gray-600 hover:border-gray-500'
     }`}>
       <div className="px-3 py-2 border-b border-gray-600 bg-gray-700/70">
         <CellControls cell={cell} onToggleParams={() => setShowParams(!showParams)} />
