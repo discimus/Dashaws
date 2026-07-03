@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { keymap } from '@codemirror/view';
+import { Compartment } from '@codemirror/state';
 import { indentMore, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -69,7 +70,22 @@ export function CellEditor({ cell }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const isExternalUpdateRef = useRef(false);
+  const editableCompartmentRef = useRef(new Compartment());
   const updateCell = useCellsStore(s => s.updateCell);
+  const lockCell = useCellsStore(s => s.lockCell);
+  const unlockCell = useCellsStore(s => s.unlockCell);
+  const clientId = useCellsStore(s => s.clientId);
+
+  const handleFocus = useCallback(() => {
+    const st = useCellsStore.getState();
+    const cc = st.cells.find(c => c.id === cell.id);
+    if (cc?.lockedBy && cc.lockedBy !== st.clientId) return;
+    lockCell(cell.id);
+  }, [cell.id, lockCell]);
+
+  const handleBlur = useCallback(() => {
+    unlockCell(cell.id);
+  }, [cell.id, unlockCell]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -80,6 +96,9 @@ export function CellEditor({ cell }: Props) {
           isExternalUpdateRef.current = false;
           return;
         }
+        const st = useCellsStore.getState();
+        const currentCell = st.cells.find(c => c.id === cell.id);
+        if (currentCell?.lockedBy && currentCell.lockedBy !== st.clientId) return;
         const content = update.state.doc.toString();
         updateCell(cell.id, { script: content });
       }
@@ -142,13 +161,28 @@ export function CellEditor({ cell }: Props) {
 
     const view = new EditorView({
       doc: cell.script,
-      extensions: [basicSetup, langExt, oneDark, envCompletion, tabHandler, commentKeymap, blockBrowserShortcuts, updateListener],
+      extensions: [
+        basicSetup,
+        langExt,
+        oneDark,
+        envCompletion,
+        tabHandler,
+        commentKeymap,
+        blockBrowserShortcuts,
+        updateListener,
+        editableCompartmentRef.current.of(EditorView.editable.of(!cell.lockedBy || cell.lockedBy === clientId)),
+      ],
       parent: containerRef.current,
     });
 
     viewRef.current = view;
 
+    view.contentDOM.addEventListener('focus', handleFocus);
+    view.contentDOM.addEventListener('blur', handleBlur);
+
     return () => {
+      view.contentDOM.removeEventListener('focus', handleFocus);
+      view.contentDOM.removeEventListener('blur', handleBlur);
       view.destroy();
       viewRef.current = null;
     };
@@ -158,6 +192,15 @@ export function CellEditor({ cell }: Props) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+
+    // Toggle editable state based on lock
+    const shouldBeEditable = !cell.lockedBy || cell.lockedBy === clientId;
+    view.dispatch({
+      effects: editableCompartmentRef.current.reconfigure(
+        EditorView.editable.of(shouldBeEditable)
+      ),
+    });
+
     const current = view.state.doc.toString();
     if (cell.script !== current) {
       isExternalUpdateRef.current = true;
@@ -167,7 +210,7 @@ export function CellEditor({ cell }: Props) {
         selection: { anchor: Math.min(cursor, cell.script.length) },
       });
     }
-  }, [cell.script]);
+  }, [cell.script, cell.lockedBy, cell.lockedAt, clientId]);
 
   return (
     <div ref={containerRef} className="codemirror-editor text-sm" />

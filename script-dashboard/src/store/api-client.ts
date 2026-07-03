@@ -61,6 +61,30 @@ export class ApiClient implements StorageBackend {
     await this.fetch(`/cells/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
+  async lockCell(id: string, clientId: string): Promise<{ ok: boolean; lockedBy?: string }> {
+    try {
+      return await this.fetch(`/cells/${encodeURIComponent(id)}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('Locked by another client')) {
+        // Parse the error to extract lockedBy if possible
+        return { ok: false };
+      }
+      return { ok: false };
+    }
+  }
+
+  async unlockCell(id: string, clientId: string): Promise<void> {
+    await this.fetch(`/cells/${encodeURIComponent(id)}/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId }),
+    });
+  }
+
   // Execution
 
   async runOnce(id: string, props?: Record<string, unknown>): Promise<ExecutionResult> {

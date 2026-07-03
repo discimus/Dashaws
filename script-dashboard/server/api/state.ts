@@ -23,6 +23,28 @@ export let autoDisabledCronNames: Set<string> = new Set();
 export let serverLanguages: string[] = ['javascript'];
 export { storage };
 
+let lockCleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+function startLockCleanup() {
+  if (lockCleanupInterval) return;
+  lockCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const cell of cells) {
+      if (cell.lockedBy && cell.lockedAt && (now - cell.lockedAt > 30000)) {
+        cell.lockedBy = null;
+        cell.lockedAt = null;
+      }
+    }
+  }, 10000);
+}
+
+export function stopLockCleanup() {
+  if (lockCleanupInterval) {
+    clearInterval(lockCleanupInterval);
+    lockCleanupInterval = null;
+  }
+}
+
 export function initServerState(): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 
@@ -44,7 +66,48 @@ export function savePersistedState(): void {
   writeFileSync(join(DATA_DIR, 'crons.json'), JSON.stringify(serverCrons, null, 2));
 }
 
+export function lockCell(id: string, clientId: string): { ok: boolean; owner?: string } {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return { ok: false };
+
+  if (cell.lockedBy && cell.lockedBy !== clientId) {
+    // Stale lock check — release if older than 30s
+    if (cell.lockedAt && Date.now() - cell.lockedAt > 30000) {
+      cell.lockedBy = clientId;
+      cell.lockedAt = Date.now();
+      return { ok: true };
+    }
+    return { ok: false, owner: cell.lockedBy };
+  }
+
+  cell.lockedBy = clientId;
+  cell.lockedAt = Date.now();
+  return { ok: true };
+}
+
+export function unlockCell(id: string, clientId: string): boolean {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return false;
+
+  if (cell.lockedBy === clientId || !cell.lockedBy) {
+    cell.lockedBy = null;
+    cell.lockedAt = null;
+    return true;
+  }
+  return false;
+}
+
 export async function syncCell(cell: Cell): Promise<void> {
+  const existing = cells.find(c => c.id === cell.id);
+  if (existing?.lockedBy && existing.lockedBy !== cell.lockedBy) {
+    if (existing.lockedAt && Date.now() - existing.lockedAt <= 30000) {
+      throw new Error('Cell locked by another client');
+    }
+    // Stale lock — clear it
+    existing.lockedBy = null;
+    existing.lockedAt = null;
+  }
+
   await storage.save(cell);
   const idx = cells.findIndex(c => c.id === cell.id);
   if (idx >= 0) {
@@ -174,6 +237,8 @@ export async function initServer(): Promise<void> {
 
   scheduler.startQueuePolling();
   scheduler.startCronPolling();
+
+  startLockCleanup();
 
   // If secrets blob exists but not unlocked, auto-disable crons for secret-using scripts
   if (serverSecretsBlob && !serverSecretsPassword) {
