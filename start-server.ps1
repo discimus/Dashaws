@@ -70,6 +70,54 @@ function Check-NodeDeps {
     Write-Host "[preflight] Node modules installed."
 }
 
+function Check-AuthConfig {
+    $configPath = Join-Path $scriptDir "dashaws.config.json"
+    if (Test-Path -LiteralPath $configPath) {
+        try {
+            $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+            if ($config.password -and $config.password -ne "change-me") {
+                Write-Host "[auth] Config file found with custom password."
+                return
+            }
+            elseif ($config.password -eq "change-me") {
+                Write-Host "[auth] WARNING: Using default password 'change-me'. Change it in dashaws.config.json!"
+                return
+            }
+        } catch {
+            Write-Host "[auth] WARNING: Config file is invalid JSON. Server will start WITHOUT authentication."
+            return
+        }
+    }
+
+    Write-Host ""
+    Write-Host "[auth] No dashaws.config.json found."
+    Write-Host "[auth] Set a server password now (leave empty to skip authentication):"
+    Write-Host ""
+    $securePw = Read-Host -Prompt "Password" -AsSecureString
+    $plainPw = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePw)
+    )
+
+    if ([string]::IsNullOrWhiteSpace($plainPw)) {
+        Write-Host "[auth] No password provided. Server will start WITHOUT authentication."
+        return
+    }
+
+    $secureConfirm = Read-Host -Prompt "Confirm password" -AsSecureString
+    $plainConfirm = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureConfirm)
+    )
+
+    if ($plainPw -ne $plainConfirm) {
+        Write-Host "[auth] Passwords do not match. Server will start WITHOUT authentication."
+        return
+    }
+
+    $config = @{ password = $plainPw } | ConvertTo-Json
+    Set-Content -LiteralPath $configPath -Value $config -Encoding UTF8
+    Write-Host "[auth] Config file created with your password."
+}
+
 # --- Main ---
 
 if ($Runtime -eq "") {
@@ -86,6 +134,7 @@ switch ($Runtime) {
         Write-Host "Port: $envPort"
         Write-Host "Data: $env:DASHAWS_DATA_DIR"
         Write-Host ""
+        Check-AuthConfig
         Set-Location $projectDir
         $pythonServerDir = Join-Path $projectDir "python-server"
         if (-not (Test-Path $pythonServerDir)) {
@@ -102,6 +151,7 @@ switch ($Runtime) {
         Write-Host "Port: $envPort"
         Write-Host "Data: $env:DASHAWS_DATA_DIR"
         Write-Host ""
+        Check-AuthConfig
         Set-Location $projectDir
         Check-NodeDeps
         Check-FrontendBuild

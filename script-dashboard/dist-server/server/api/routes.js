@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll, serverLanguages } from './state.js';
+import { serverEnv, serverSecrets, serverSecretsBlob, serverSecretsPassword, savePersistedState, serverQueues, serverEventTopics, serverCrons, cells, scheduler, syncCell, removeCell, storage, unlockSecrets, lockSecrets, setSecretsBlob, clearSecretsAll, serverLanguages, lockCell, unlockCell } from './state.js';
 export function createApiRouter() {
     const router = Router();
     router.get('/health', (_req, res) => {
@@ -27,6 +27,29 @@ export function createApiRouter() {
     router.delete('/cells/:id', async (req, res) => {
         const id = req.params.id;
         await removeCell(id);
+        res.json({ ok: true });
+    });
+    router.post('/cells/:id/lock', async (req, res) => {
+        const id = req.params.id;
+        const { clientId } = req.body || {};
+        if (!clientId || typeof clientId !== 'string') {
+            return res.status(400).json({ error: 'clientId required' });
+        }
+        const result = lockCell(id, clientId);
+        if (result.ok) {
+            res.json({ ok: true });
+        }
+        else {
+            res.status(409).json({ error: 'Locked by another client', lockedBy: result.owner });
+        }
+    });
+    router.post('/cells/:id/unlock', async (req, res) => {
+        const id = req.params.id;
+        const { clientId } = req.body || {};
+        if (!clientId || typeof clientId !== 'string') {
+            return res.status(400).json({ error: 'clientId required' });
+        }
+        unlockCell(id, clientId);
         res.json({ ok: true });
     });
     router.post('/cells/:id/run', async (req, res) => {

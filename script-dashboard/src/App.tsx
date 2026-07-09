@@ -11,12 +11,13 @@ import { PubSubView } from './components/PubSubView';
 import { CronView } from './components/CronView';
 import { HelpView } from './components/HelpView';
 import { Toast } from './components/Toast';
+import { LoginScreen } from './components/LoginScreen';
 import { InsecureContextBanner } from './components/InsecureContextBanner';
 
 export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons' | 'help';
 
 export default function App() {
-  const { loaded, init } = useCellsStore();
+  const { loaded, authenticated, authRequired, init } = useCellsStore();
   const [view, setView] = useState<View>('overview');
   const [focusCellId, setFocusCellId] = useState<string | null>(null);
 
@@ -37,6 +38,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (authRequired && !authenticated) {
+    return <LoginScreen />;
   }
 
   return (

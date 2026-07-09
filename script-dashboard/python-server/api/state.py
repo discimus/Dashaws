@@ -13,6 +13,9 @@ from crypto.secrets import encrypt_secrets, decrypt_secrets, hash_password
 from utils.parse import parse_message_body
 
 
+auth_enabled = {"value": False}
+valid_tokens: set = set()
+
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
