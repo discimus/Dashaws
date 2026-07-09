@@ -20,7 +20,7 @@ export function createApiRouter() {
     });
     router.put('/cells/:id', async (req, res) => {
         const id = req.params.id;
-        const allowed = ['name', 'language', 'script', 'intervalMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
+        const allowed = ['name', 'language', 'script', 'intervalMs', 'timeoutMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
         const filtered = {};
         for (const k of allowed) {
             if (Object.hasOwn(req.body, k)) {

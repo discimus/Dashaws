@@ -10,7 +10,8 @@ export class BaseScheduler {
         const ac = new AbortController();
         const { env, secrets, secretsObj } = this.getEnv();
         const resolvedProps = props ?? parseParams(cell.params);
-        const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, resolvedProps, this.buildCellsAPI(), ac.signal, this.executorConfig);
+        const config = { ...this.executorConfig, timeoutMs: cell.timeoutMs ?? undefined };
+        const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, resolvedProps, this.buildCellsAPI(), ac.signal, config);
         this.onResult(cellId, result);
         return result;
     }
@@ -25,7 +26,8 @@ export class BaseScheduler {
             try {
                 const { env, secrets, secretsObj } = this.getEnv();
                 const props = parseParams(cell.params);
-                const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, props, this.buildCellsAPI(), ac.signal, this.executorConfig);
+                const config = { ...this.executorConfig, timeoutMs: cell.timeoutMs ?? undefined };
+                const result = await executeScript(cell.script, { ...cell.state }, env, secrets, secretsObj, props, this.buildCellsAPI(), ac.signal, config);
                 this.onResult(cellId, result);
             }
             catch {

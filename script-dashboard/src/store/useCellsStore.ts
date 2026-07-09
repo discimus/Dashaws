@@ -535,6 +535,7 @@ console.log("Run count:", $state.counter);
       language: defaultLang as 'javascript' | 'python',
       script: defaultScript,
       intervalMs: 10000,
+      timeoutMs: null,
       enabled: false,
       lastRunAt: null,
       status: 'idle',

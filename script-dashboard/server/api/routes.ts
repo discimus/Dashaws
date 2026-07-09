@@ -26,7 +26,7 @@ export function createApiRouter(): Router {
 
   router.put('/cells/:id', async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const allowed = ['name', 'language', 'script', 'intervalMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
+    const allowed = ['name', 'language', 'script', 'intervalMs', 'timeoutMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
     const filtered: Record<string, unknown> = {};
     for (const k of allowed) {
       if (Object.hasOwn(req.body as object, k)) {

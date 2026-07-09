@@ -51,8 +51,15 @@ export class ServerScheduler extends BaseScheduler {
                     if (!cell)
                         continue;
                     const msg = q.messages[0];
-                    q.messages = q.messages.slice(1);
-                    this.runOnce(subId, parseMessageBody(msg.body));
+                    void this.runOnce(subId, parseMessageBody(msg.body)).then(() => {
+                        q.messages = q.messages.slice(1);
+                    }).catch(() => {
+                        msg.retries += 1;
+                        const maxRetries = q.maxRetries ?? 3;
+                        if (msg.retries >= maxRetries) {
+                            q.messages = q.messages.slice(1);
+                        }
+                    });
                     break;
                 }
             }

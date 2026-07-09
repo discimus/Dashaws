@@ -22,6 +22,17 @@ const INTERVAL_PRESETS = [
   { label: '1h', value: 3600000 },
 ];
 
+const TIMEOUT_PRESETS = [
+  { label: 'No limit', value: 0 },
+  { label: '10s', value: 10000 },
+  { label: '30s', value: 30000 },
+  { label: '1m', value: 60000 },
+  { label: '5m', value: 300000 },
+  { label: '15m', value: 900000 },
+  { label: '30m', value: 1800000 },
+  { label: '1h', value: 3600000 },
+];
+
 export function CellControls({ cell, onToggleParams }: Props) {
   const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked, tryUnlockSecrets, clientId } =
     useCellsStore();
@@ -147,10 +158,23 @@ export function CellControls({ cell, onToggleParams }: Props) {
           value={cell.intervalMs}
           onChange={e => updateCell(cell.id, { intervalMs: Number(e.target.value) })}
           className="bg-gray-800 border border-gray-500 rounded px-1.5 py-0.5 text-xs outline-none"
+          title="Interval between runs"
         >
           {INTERVAL_PRESETS.map(p => (
             <option key={p.value} value={p.value}>
               {p.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={cell.timeoutMs ?? 0}
+          onChange={e => updateCell(cell.id, { timeoutMs: Number(e.target.value) || null })}
+          className="bg-gray-800 border border-gray-500 rounded px-1.5 py-0.5 text-xs outline-none"
+          title="Max execution time per run (0 = no limit)"
+        >
+          {TIMEOUT_PRESETS.map(p => (
+            <option key={p.value} value={p.value}>
+              {'\u23F1'} {p.label}
             </option>
           ))}
         </select>

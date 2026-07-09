@@ -36,7 +36,9 @@ async def get_cell(id: str):
 
 @router.put("/cells/{id}")
 async def put_cell(id: str, body: dict):
-    cell = {**body, "id": id, "updatedAt": int(time.time() * 1000)}
+    allowed = {'name', 'language', 'script', 'intervalMs', 'timeoutMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'}
+    cell = {k: body[k] for k in allowed if k in body}
+    cell.update({"id": id, "updatedAt": int(time.time() * 1000)})
     if "language" not in cell:
         cell["language"] = "python"
     await st.sync_cell(cell)

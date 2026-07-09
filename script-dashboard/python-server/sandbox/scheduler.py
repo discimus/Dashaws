@@ -103,6 +103,7 @@ class ServerScheduler:
             env_data.get("secretsObj", {}),
             resolved_props,
             self._api_base,
+            timeout=float(cell.get("timeoutMs", 0) or 0) / 1000.0 if cell.get("timeoutMs") else 0.0,
         )
 
         if self._on_result:
@@ -178,8 +179,14 @@ class ServerScheduler:
                             if not cell:
                                 continue
                             msg = q["messages"][0]
-                            q["messages"] = q["messages"][1:]
-                            await self.run_once(sub_id, parse_message_body(msg.get("body", "")))
+                            try:
+                                await self.run_once(sub_id, parse_message_body(msg.get("body", "")))
+                                q["messages"] = q["messages"][1:]
+                            except Exception:
+                                msg["retries"] = msg.get("retries", 0) + 1
+                                max_retries = q.get("maxRetries", 3)
+                                if msg["retries"] >= max_retries:
+                                    q["messages"] = q["messages"][1:]
                             break
                 except Exception:
                     pass

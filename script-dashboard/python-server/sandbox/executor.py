@@ -1,4 +1,5 @@
 """Script executor using exec() for sandboxed code execution."""
+import asyncio
 import re
 import traceback
 from typing import Dict, Any, List
@@ -44,9 +45,9 @@ async def execute_script(
     secrets_obj: Dict[str, str],
     props: Dict[str, Any],
     api_base: str,
-    timeout: float = 30.0,
+    timeout: float = 0.0,
 ) -> dict:
-    """Execute a Python script in a sandbox. Returns ExecutionResult-compatible dict."""
+    """Execute a Python script in a sandbox with optional timeout. Returns ExecutionResult-compatible dict."""
     secrets_set = set(v for v in (secrets_obj or {}).values() if v)
 
     globals_dict, output, state_ref = create_sandbox_globals(
@@ -58,18 +59,43 @@ async def execute_script(
     success = True
     error = None
 
-    try:
+    if timeout and timeout > 0:
         compiled = compile(script, "<script>", "exec")
-        exec(compiled, globals_dict)
-    except Exception as e:
-        success = False
-        tb = traceback.format_exc()
-        error = "{}: {}".format(type(e).__name__, str(e))
-        output.append({
-            "timestamp": int(__import__("time").time() * 1000),
-            "type": "error",
-            "args": [tb],
-        })
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(exec, compiled, globals_dict),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            success = False
+            error = "Timed out after {}s".format(timeout)
+            output.append({
+                "timestamp": int(__import__("time").time() * 1000),
+                "type": "error",
+                "args": ["Script timed out after {}s".format(timeout)],
+            })
+        except Exception as e:
+            success = False
+            tb = traceback.format_exc()
+            error = "{}: {}".format(type(e).__name__, str(e))
+            output.append({
+                "timestamp": int(__import__("time").time() * 1000),
+                "type": "error",
+                "args": [tb],
+            })
+    else:
+        try:
+            compiled = compile(script, "<script>", "exec")
+            exec(compiled, globals_dict)
+        except Exception as e:
+            success = False
+            tb = traceback.format_exc()
+            error = "{}: {}".format(type(e).__name__, str(e))
+            output.append({
+                "timestamp": int(__import__("time").time() * 1000),
+                "type": "error",
+                "args": [tb],
+            })
 
     final_state = globals_dict.get("state", state_ref)
     if final_state is None or not isinstance(final_state, dict):
