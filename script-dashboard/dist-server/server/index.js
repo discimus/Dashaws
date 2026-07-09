@@ -2,11 +2,10 @@ import express from 'express';
 import { createServer } from 'http';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { randomBytes } from 'crypto';
 import { createApiRouter } from './api/routes.js';
 import { initServer, cells, serverQueues, serverEventTopics, serverCrons } from './api/state.js';
+import { setPassword, createAuthMiddleware, createToken, setAuthCookie, clearAuthCookie, extractToken, removeToken, getClientIP, checkRateLimit, recordFailedAttempt, clearFailedAttempts, cleanupFailedAttempts, failedAttempts, authEnabled, serverPassword, } from './api/auth.js';
 const PORT = parseInt(process.env.PORT || '3456', 10);
-let serverPassword = null;
 const configSearchPaths = [
     join(process.cwd(), '..', 'dashaws.config.json'),
     join(process.cwd(), 'dashaws.config.json'),
@@ -15,8 +14,8 @@ for (const p of configSearchPaths) {
     try {
         if (existsSync(p)) {
             const config = JSON.parse(readFileSync(p, 'utf-8'));
-            serverPassword = config.password || null;
-            if (serverPassword) {
+            setPassword(config.password || null);
+            if (authEnabled) {
                 console.log('[auth] Password loaded from config file');
                 break;
             }
@@ -24,88 +23,10 @@ for (const p of configSearchPaths) {
     }
     catch { /* ignore */ }
 }
-const COOKIE_NAME = 'dashaws_token';
-const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const validTokens = new Set();
-const authEnabled = serverPassword !== null;
 if (!authEnabled) {
     console.log('[auth] No password configured — authentication disabled');
 }
-const failedAttempts = new Map();
-function getClientIP(req) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string') {
-        return forwarded.split(',')[0].trim();
-    }
-    return req.socket.remoteAddress || '127.0.0.1';
-}
-function calculateBackoff(count) {
-    return Math.min(Math.pow(2, count - 1), 300) * 1000;
-}
-function checkRateLimit(ip) {
-    const entry = failedAttempts.get(ip);
-    if (!entry)
-        return null;
-    const backoffMs = calculateBackoff(entry.count);
-    const elapsed = Date.now() - entry.lastAttempt;
-    if (elapsed < backoffMs) {
-        return backoffMs - elapsed;
-    }
-    return null;
-}
-function recordFailedAttempt(ip) {
-    const existing = failedAttempts.get(ip);
-    if (existing) {
-        existing.count += 1;
-        existing.lastAttempt = Date.now();
-    }
-    else {
-        failedAttempts.set(ip, {
-            count: 1,
-            lastAttempt: Date.now(),
-            firstAttempt: Date.now(),
-        });
-    }
-}
-function clearFailedAttempts(ip) {
-    failedAttempts.delete(ip);
-}
-function parseCookies(cookieHeader) {
-    const cookies = {};
-    cookieHeader.split(';').forEach(pair => {
-        const idx = pair.indexOf('=');
-        if (idx > 0) {
-            cookies[pair.substring(0, idx).trim()] = pair.substring(idx + 1).trim();
-        }
-    });
-    return cookies;
-}
-function setAuthCookie(res, token) {
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(TOKEN_MAX_AGE_MS / 1000)}`);
-}
-function clearAuthCookie(res) {
-    res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
-}
-function extractToken(req) {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        return authHeader.slice(7);
-    }
-    const cookieHeader = req.headers.cookie;
-    if (cookieHeader) {
-        const cookies = parseCookies(cookieHeader);
-        return cookies[COOKIE_NAME] || null;
-    }
-    return null;
-}
-setInterval(() => {
-    const cutoff = Date.now() - 10 * 60 * 1000;
-    for (const [ip, entry] of failedAttempts) {
-        if (entry.firstAttempt < cutoff) {
-            failedAttempts.delete(ip);
-        }
-    }
-}, 60 * 1000);
+setInterval(() => cleanupFailedAttempts(), 60 * 1000);
 await initServer();
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -117,19 +38,7 @@ app.use((_req, res, next) => {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     next();
 });
-app.use('/api', (req, res, next) => {
-    if (req.path === '/health' || req.path === '/auth/login' || req.path === '/auth/status') {
-        return next();
-    }
-    if (!authEnabled) {
-        return next();
-    }
-    const token = extractToken(req);
-    if (!token || !validTokens.has(token)) {
-        return res.status(401).json({ error: 'Authentication required' });
-    }
-    next();
-});
+app.use('/api', createAuthMiddleware());
 app.post('/api/auth/login', (req, res) => {
     if (!authEnabled) {
         return res.json({ token: 'no-auth-required' });
@@ -153,9 +62,7 @@ app.post('/api/auth/login', (req, res) => {
         });
     }
     clearFailedAttempts(ip);
-    const token = randomBytes(32).toString('hex');
-    validTokens.add(token);
-    setTimeout(() => validTokens.delete(token), TOKEN_MAX_AGE_MS);
+    const token = createToken();
     setAuthCookie(res, token);
     res.json({ token });
 });
@@ -168,7 +75,7 @@ app.get('/api/auth/verify', (_req, res) => {
 app.post('/api/auth/logout', (req, res) => {
     const token = extractToken(req);
     if (token) {
-        validTokens.delete(token);
+        removeToken(token);
     }
     clearAuthCookie(res);
     res.json({ ok: true });
