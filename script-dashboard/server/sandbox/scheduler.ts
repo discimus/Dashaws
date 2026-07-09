@@ -5,7 +5,7 @@ import { BaseScheduler, type GetCell, type GetEnv, type OnResult } from '../../s
 import { parseMessageBody } from '../../src/shared/parse.js';
 
 const randomUUID = (): string => {
-  if (typeof crypto.randomUUID === 'function') return randomUUID();
+  if (typeof crypto.randomUUID !== 'function') return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = crypto.getRandomValues(new Uint8Array(1))[0] & 15;
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);

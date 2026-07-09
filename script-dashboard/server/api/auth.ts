@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 
 export const COOKIE_NAME = 'dashaws_token';
 export const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -19,6 +19,20 @@ export const failedAttempts = new Map<string, FailedAttempt>();
 export function setPassword(pw: string | null): void {
   serverPassword = pw;
   authEnabled = pw !== null;
+}
+
+export function verifyPassword(input: string): boolean {
+  if (!serverPassword) return false;
+  const inputBuf = Buffer.from(input, 'utf-8');
+  const storedBuf = Buffer.from(serverPassword, 'utf-8');
+  if (inputBuf.length !== storedBuf.length) {
+    // Compare anyway to avoid length-based timing leak
+    const dummy = Buffer.alloc(storedBuf.length, 0);
+    inputBuf.copy(dummy);
+    void timingSafeEqual(dummy, storedBuf);
+    return false;
+  }
+  return timingSafeEqual(inputBuf, storedBuf);
 }
 
 export function parseCookies(cookieHeader: string): Record<string, string> {

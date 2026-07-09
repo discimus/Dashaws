@@ -4,7 +4,7 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { createApiRouter } from './api/routes.js';
 import { initServer, cells, serverQueues, serverEventTopics, serverCrons } from './api/state.js';
-import { setPassword, createAuthMiddleware, createToken, setAuthCookie, clearAuthCookie, extractToken, removeToken, getClientIP, checkRateLimit, recordFailedAttempt, clearFailedAttempts, cleanupFailedAttempts, failedAttempts, authEnabled, serverPassword, } from './api/auth.js';
+import { setPassword, createAuthMiddleware, createToken, setAuthCookie, clearAuthCookie, extractToken, removeToken, getClientIP, checkRateLimit, recordFailedAttempt, clearFailedAttempts, cleanupFailedAttempts, failedAttempts, authEnabled, verifyPassword, } from './api/auth.js';
 const PORT = parseInt(process.env.PORT || '3456', 10);
 const configSearchPaths = [
     join(process.cwd(), '..', 'dashaws.config.json'),
@@ -53,7 +53,7 @@ app.post('/api/auth/login', (req, res) => {
         });
     }
     const { password } = req.body || {};
-    if (!password || password !== serverPassword) {
+    if (!password || !verifyPassword(password)) {
         recordFailedAttempt(ip);
         const entry = failedAttempts.get(ip);
         return res.status(401).json({

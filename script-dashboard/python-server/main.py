@@ -180,6 +180,7 @@ async def add_security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
@@ -207,7 +208,7 @@ async def auth_login(body: dict = Body(...), request: Request = None):
         )
 
     password = body.get("password")
-    if not password or password != _server_password:
+    if not password or not secrets.compare_digest(password, _server_password):
         _record_failed_attempt(ip)
         attempts = _failed_attempts[ip]["count"]
         return JSONResponse(

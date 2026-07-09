@@ -9,7 +9,7 @@ from pathlib import Path
 
 from storage.file_storage import FileStorageBackend
 from sandbox.scheduler import ServerScheduler
-from crypto.secrets import encrypt_secrets, decrypt_secrets, hash_password
+from crypto.secrets import decrypt_secrets
 from utils.parse import parse_message_body
 
 

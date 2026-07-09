@@ -20,7 +20,14 @@ export function createApiRouter() {
     });
     router.put('/cells/:id', async (req, res) => {
         const id = req.params.id;
-        const cell = { ...req.body, id, updatedAt: Date.now() };
+        const allowed = ['name', 'language', 'script', 'intervalMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
+        const filtered = {};
+        for (const k of allowed) {
+            if (Object.hasOwn(req.body, k)) {
+                filtered[k] = req.body[k];
+            }
+        }
+        const cell = { ...filtered, id, updatedAt: Date.now() };
         await syncCell(cell);
         res.json(cell);
     });
@@ -85,9 +92,21 @@ export function createApiRouter() {
     });
     router.get('/env', (_req, res) => res.json(serverEnv));
     router.put('/env', (req, res) => {
-        Object.assign(serverEnv, req.body);
+        const body = req.body || {};
+        if (typeof body !== 'object' || Array.isArray(body)) {
+            return res.status(400).json({ error: 'Expected object' });
+        }
+        for (const k of Object.keys(body)) {
+            if (typeof k !== 'string' || k.length > 128)
+                continue;
+            if (typeof body[k] !== 'string')
+                continue;
+            if (body[k].length > 4096)
+                continue;
+            serverEnv[k] = body[k];
+        }
         for (const k of Object.keys(serverEnv)) {
-            if (!(k in req.body))
+            if (!Object.hasOwn(body, k))
                 delete serverEnv[k];
         }
         savePersistedState();

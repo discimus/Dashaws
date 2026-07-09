@@ -19,7 +19,7 @@ import {
   cleanupFailedAttempts,
   failedAttempts,
   authEnabled,
-  serverPassword,
+  verifyPassword,
 } from './api/auth.js';
 
 const PORT = parseInt(process.env.PORT || '3456', 10);
@@ -80,7 +80,7 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   const { password } = req.body || {};
-  if (!password || password !== serverPassword) {
+  if (!password || !verifyPassword(password)) {
     recordFailedAttempt(ip);
     const entry = failedAttempts.get(ip)!;
     return res.status(401).json({

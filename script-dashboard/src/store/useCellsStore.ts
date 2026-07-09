@@ -425,7 +425,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   eventTopics: {},
   crons: [],
   languages: ['javascript'],
-  clientId: Math.random().toString(36).substring(2, 10),
+  clientId: globalThis.crypto?.randomUUID?.() || Math.random().toString(36).substring(2, 18),
   editingCellId: null,
 
   init: async () => {
