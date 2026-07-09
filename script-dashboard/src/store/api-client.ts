@@ -97,6 +97,20 @@ export class ApiClient implements StorageBackend {
     }
   }
 
+  async verifyAuth(): Promise<boolean> {
+    try {
+      await this.fetch('/auth/verify');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async logout(): Promise<void> {
+    await this.fetch('/auth/logout', { method: 'POST' });
+    this.token = null;
+  }
+
   // StorageBackend implementation
 
   async list(): Promise<Cell[]> {

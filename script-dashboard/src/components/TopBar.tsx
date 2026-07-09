@@ -1,7 +1,7 @@
 import { useCellsStore } from '../store/useCellsStore';
 
 export function TopBar() {
-  const { cells, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked, keepAlive, toggleKeepAlive } = useCellsStore();
+  const { cells, stopAll, runningIds, secretsBlob, keepUnlocked, toggleKeepUnlocked, keepAlive, toggleKeepAlive, authRequired, authenticated, logout } = useCellsStore();
   const activeCount = runningIds.length;
   const hasSecrets = secretsBlob !== null;
 
@@ -70,6 +70,15 @@ export function TopBar() {
               className="px-4 py-1.5 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
             >
               Stop All
+            </button>
+          )}
+
+          {authRequired && authenticated && (
+            <button
+              onClick={() => logout()}
+              className="px-4 py-1.5 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors border border-gray-600"
+            >
+              Logout
             </button>
           )}
         </div>

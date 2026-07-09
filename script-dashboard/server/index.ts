@@ -27,6 +27,9 @@ for (const p of configSearchPaths) {
   } catch { /* ignore */ }
 }
 
+const COOKIE_NAME = 'dashaws_token';
+const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 const validTokens = new Set<string>();
 const authEnabled = serverPassword !== null;
 
@@ -86,6 +89,40 @@ function clearFailedAttempts(ip: string): void {
   failedAttempts.delete(ip);
 }
 
+function parseCookies(cookieHeader: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  cookieHeader.split(';').forEach(pair => {
+    const idx = pair.indexOf('=');
+    if (idx > 0) {
+      cookies[pair.substring(0, idx).trim()] = pair.substring(idx + 1).trim();
+    }
+  });
+  return cookies;
+}
+
+function setAuthCookie(res: express.Response, token: string): void {
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(TOKEN_MAX_AGE_MS / 1000)}`);
+}
+
+function clearAuthCookie(res: express.Response): void {
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+}
+
+function extractToken(req: express.Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    const cookies = parseCookies(cookieHeader);
+    return cookies[COOKIE_NAME] || null;
+  }
+
+  return null;
+}
+
 setInterval(() => {
   const cutoff = Date.now() - 10 * 60 * 1000;
   for (const [ip, entry] of failedAttempts) {
@@ -118,14 +155,9 @@ app.use('/api', (req, res, next) => {
     return next();
   }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractToken(req);
+  if (!token || !validTokens.has(token)) {
     return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  const token = authHeader.slice(7);
-  if (!validTokens.has(token)) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
   next();
@@ -162,13 +194,27 @@ app.post('/api/auth/login', (req, res) => {
   const token = randomBytes(32).toString('hex');
   validTokens.add(token);
 
-  setTimeout(() => validTokens.delete(token), 24 * 60 * 60 * 1000);
+  setTimeout(() => validTokens.delete(token), TOKEN_MAX_AGE_MS);
 
+  setAuthCookie(res, token);
   res.json({ token });
 });
 
 app.get('/api/auth/status', (_req, res) => {
   res.json({ authEnabled });
+});
+
+app.get('/api/auth/verify', (_req, res) => {
+  res.json({ authenticated: true });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = extractToken(req);
+  if (token) {
+    validTokens.delete(token);
+  }
+  clearAuthCookie(res);
+  res.json({ ok: true });
 });
 
 app.use('/api', createApiRouter());

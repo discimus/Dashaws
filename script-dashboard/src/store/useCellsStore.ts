@@ -196,6 +196,7 @@ interface CellsState {
 
   init: () => Promise<void>;
   login: (password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   addCell: () => Promise<void>;
   updateCell: (id: string, updates: Partial<Cell>) => Promise<void>;
   deleteCell: (id: string) => Promise<void>;
@@ -454,6 +455,13 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     }
 
     if (authEnabled) {
+      const cookieAuth = await apiClient!.verifyAuth();
+      if (cookieAuth) {
+        set({ authRequired: true, authenticated: true, loaded: false });
+        await loadData();
+        return;
+      }
+
       set({ authRequired: true, authenticated: false, loaded: true });
       return;
     }
@@ -473,6 +481,29 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     } catch {
       return false;
     }
+  },
+
+  logout: async () => {
+    if (apiClient) {
+      try { await apiClient.logout(); } catch { /* ignore */ }
+      apiClient.setToken(null);
+    }
+    set({
+      authenticated: false,
+      loaded: false,
+      cells: [],
+      runningIds: [],
+      env: {},
+      secrets: {},
+      secretsBlob: null,
+      secretsLocked: false,
+      queues: {},
+      eventTopics: {},
+      crons: [],
+    });
+    stopServerPolling();
+    initStarted = false;
+    await get().init();
   },
 
   addCell: async () => {

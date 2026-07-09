@@ -12,6 +12,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from api.routes import router as api_router
 from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all, auth_enabled, valid_tokens
 
+COOKIE_NAME = "dashaws_token"
+TOKEN_MAX_AGE_S = 24 * 60 * 60
+
 _server_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.dirname(_server_dir)
 _config_paths = [
@@ -85,6 +88,29 @@ def _clear_failed_attempts(ip: str) -> None:
     _failed_attempts.pop(ip, None)
 
 
+def _extract_token(request: Request) -> str | None:
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+
+    return request.cookies.get(COOKIE_NAME)
+
+
+def _set_auth_cookie(response: JSONResponse, token: str) -> None:
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="strict",
+        path="/",
+        max_age=TOKEN_MAX_AGE_S,
+    )
+
+
+def _clear_auth_cookie(response: JSONResponse) -> None:
+    response.delete_cookie(key=COOKIE_NAME, path="/")
+
+
 async def _cleanup_old_attempts():
     while True:
         await asyncio.sleep(60)
@@ -142,13 +168,9 @@ async def auth_middleware(request: Request, call_next):
     if not auth_enabled.get("value", False):
         return await call_next(request)
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = _extract_token(request)
+    if not token or token not in valid_tokens:
         return JSONResponse(status_code=401, content={"error": "Authentication required"})
-
-    token = auth_header[7:]
-    if token not in valid_tokens:
-        return JSONResponse(status_code=401, content={"error": "Invalid or expired token"})
 
     return await call_next(request)
 
@@ -197,12 +219,30 @@ async def auth_login(body: dict = Body(...), request: Request = None):
 
     token = secrets.token_hex(32)
     valid_tokens.add(token)
-    return {"token": token}
+
+    response = JSONResponse(content={"token": token})
+    _set_auth_cookie(response, token)
+    return response
 
 
 @app.get("/api/auth/status")
 async def auth_status():
     return {"authEnabled": auth_enabled.get("value", False)}
+
+
+@app.get("/api/auth/verify")
+async def auth_verify():
+    return {"authenticated": True}
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request):
+    token = _extract_token(request)
+    if token:
+        valid_tokens.discard(token)
+    response = JSONResponse(content={"ok": True})
+    _clear_auth_cookie(response)
+    return response
 
 
 dist_path = os.path.join(os.getcwd(), "dist")
