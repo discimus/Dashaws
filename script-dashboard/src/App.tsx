@@ -32,7 +32,7 @@ export default function App() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-gray-400 bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen text-on-surface-variant bg-surface">
         <div className="text-center">
           <div className="text-lg mb-2">Loading dashboard...</div>
         </div>
@@ -45,12 +45,12 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 text-gray-100 overflow-hidden">
+    <div className="h-screen bg-surface text-on-surface overflow-hidden">
       <TopBar />
       <InsecureContextBanner />
       <div className="flex h-full pt-12">
         <Sidebar view={view} onViewChange={setView} onEditCell={navigateToEditor} />
-        <main className="flex-1 overflow-y-auto px-4 pb-4 bg-gray-800">
+        <main className="flex-1 overflow-y-auto px-4 pb-4 bg-surface">
           {view === 'overview' ? (
             <Overview onEditCell={navigateToEditor} />
           ) : view === 'scripts' ? (

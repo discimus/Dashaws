@@ -22,8 +22,8 @@ export function JsonInput({ value, onChange, onSubmit }: Props) {
     if (!containerRef.current) return;
 
     const jsonTheme = Prec.high(EditorView.theme({
-      '&': { backgroundColor: '#1e2a35 !important' },
-      '.cm-gutters': { backgroundColor: '#19232d !important', borderRight: '1px solid #334155 !important', color: '#64748b !important' },
+      '&': { backgroundColor: '#191a1e !important' },
+      '.cm-gutters': { backgroundColor: '#141316 !important', borderRight: '1px solid #43474e !important', color: '#8e9099 !important' },
     }));
 
     const autoHeight = EditorView.theme({
@@ -117,5 +117,5 @@ export function JsonInput({ value, onChange, onSubmit }: Props) {
     }
   }, [value]);
 
-  return <div ref={containerRef} className="codemirror-editor text-[10px] border border-gray-500 rounded overflow-hidden" />;
+  return <div ref={containerRef} className="codemirror-editor text-[10px] border border-outline-variant rounded-lg overflow-hidden" />;
 }

@@ -72,10 +72,10 @@ export function LoginScreen() {
   const isBlocked = retryAfter > 0;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl w-80 p-6">
-        <h1 className="text-lg font-bold text-gray-100 text-center mb-1">Dashaws</h1>
-        <p className="text-xs text-gray-400 text-center mb-4">
+    <div className="flex items-center justify-center min-h-screen bg-surface">
+      <div className="bg-surface-container-high border border-outline-variant rounded-2xl shadow-2xl w-80 p-6">
+        <h1 className="text-lg font-semibold text-on-surface text-center mb-1">Dashaws</h1>
+        <p className="text-xs text-on-surface-variant text-center mb-4">
           Enter the server password to continue
         </p>
 
@@ -89,11 +89,11 @@ export function LoginScreen() {
           onKeyDown={e => {
             if (e.key === 'Enter' && password && !isBlocked) handleSubmit();
           }}
-          className="w-full bg-gray-900 border border-gray-500 rounded px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 placeholder-gray-500 disabled:opacity-40"
+          className="md-field w-full px-3 py-2 text-sm disabled:opacity-40"
         />
 
         {error && (
-          <p className="text-xs text-red-400 mt-2 text-center">
+          <p className="text-xs text-error mt-2 text-center">
             {error}
             {isBlocked && ` (${formatTime(retryAfter)})`}
           </p>
@@ -102,7 +102,7 @@ export function LoginScreen() {
         <button
           onClick={handleSubmit}
           disabled={!password || loading || isBlocked}
-          className="w-full mt-4 px-3 py-2 rounded text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="md-btn md-btn-filled w-full mt-4 px-3 py-2 text-base"
         >
           {isBlocked ? formatTime(retryAfter) : loading ? 'Connecting...' : 'Login'}
         </button>

@@ -7,7 +7,7 @@ export function Toast() {
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-      <div className="bg-gray-200 text-gray-900 px-4 py-2 rounded-lg shadow-lg text-xs font-semibold animate-pulse">
+      <div className="bg-on-surface text-surface px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium">
         {message}
       </div>
     </div>

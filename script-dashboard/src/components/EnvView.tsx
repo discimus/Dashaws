@@ -23,37 +23,37 @@ export function EnvView() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+      <div className="sticky top-0 z-10 bg-surface pt-3 pb-3">
+        <h2 className="text-sm font-semibold text-on-surface uppercase tracking-wider">
           Environment Variables
         </h2>
-        <p className="text-[11px] text-gray-400 mt-1">
-          Accessible in scripts via <code className="text-blue-400 bg-gray-700/50 px-1 py-0.5 rounded text-[10px]">$env.KEY_NAME</code>
+        <p className="text-[11px] text-on-surface-variant mt-1">
+          Accessible in scripts via <code className="text-primary md-code text-xs">$env.KEY_NAME</code>
         </p>
       </div>
 
       {entries.length > 0 ? (
         <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-600 text-left">
-                <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/3">Key</th>
-                <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Value</th>
-                <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-10"></th>
-                <th className="py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16"></th>
+              <tr className="border-b border-outline-variant text-left">
+                <th className="py-2 px-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-1/3">Key</th>
+                <th className="py-2 px-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Value</th>
+                <th className="py-2 px-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-10"></th>
+                <th className="py-2 px-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-16"></th>
               </tr>
             </thead>
             <tbody>
               {entries.map(([key, value]) => (
-                <tr key={key} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
+                <tr key={key} className="border-b border-outline-variant/50 hover:bg-on-surface/4 transition-colors">
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1.5">
-                      <code className="text-blue-400 font-mono text-xs bg-gray-700/50 px-1.5 py-0.5 rounded">
+                      <code className="text-primary font-mono text-xs bg-on-surface/6 px-1.5 py-0.5 rounded">
                         {key}
                       </code>
                       <button
                         onClick={() => { copyToClipboard(key); useToastStore.getState().show('Copied!'); }}
                         title="Copy name"
-                        className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
+                        className="flex-shrink-0 px-1 py-0.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 transition-colors"
                       >
                         &#128203;
                       </button>
@@ -61,12 +61,12 @@ export function EnvView() {
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-gray-300 font-mono text-xs break-all">{value || <span className="text-gray-500 italic">empty</span>}</span>
+                      <span className="text-on-surface font-mono text-xs break-all">{value || <span className="text-on-surface-variant/60 italic">empty</span>}</span>
                       {value && (
                         <button
                           onClick={() => { copyToClipboard(value); useToastStore.getState().show('Copied!'); }}
                           title="Copy value"
-                          className="flex-shrink-0 px-1 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-200 hover:bg-gray-600 transition-colors"
+                          className="flex-shrink-0 px-1 py-0.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 transition-colors"
                         >
                           &#128203;
                         </button>
@@ -76,16 +76,16 @@ export function EnvView() {
                   <td className="py-2.5 px-3 relative">
                     <button
                       onClick={() => setMenuKey(menuKey === key ? null : key)}
-                      className="px-2 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                      className="px-2 py-1 rounded-full text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 transition-colors"
                       title="Actions"
                     >
                       &#8942;
                     </button>
                     {menuKey === key && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+                      <div className="md-menu absolute right-0 top-full mt-1 w-32 z-20">
                         <button
                           onClick={() => { setMenuKey(null); setConfirmingKey(key); }}
-                          className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/30 transition-colors"
+                          className="md-menu-item text-error hover:bg-error/10"
                         >
                           Delete
                         </button>
@@ -103,14 +103,14 @@ export function EnvView() {
             </tbody>
           </table>
       ) : (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-on-surface-variant">
           <div className="text-3xl mb-2">&#128273;</div>
           <p className="text-sm">No environment variables defined yet.</p>
         </div>
       )}
 
-      <div className="mt-6 border border-gray-600 rounded-lg p-4 bg-gray-700/30">
-        <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">Add Variable</h3>
+      <div className="mt-6 md-card p-4">
+        <h3 className="text-xs font-semibold text-on-surface uppercase tracking-wider mb-3">Add Variable</h3>
         <div className="flex gap-2">
           <input
             type="text"
@@ -118,7 +118,7 @@ export function EnvView() {
             value={newKey}
             onChange={e => setNewKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-            className="flex-1 bg-gray-800 border border-gray-500 rounded px-3 py-2 text-sm font-mono text-gray-200 outline-none focus:border-blue-500 placeholder-gray-500"
+            className="md-field flex-1 px-3 py-2 text-sm font-mono"
           />
           <input
             type="text"
@@ -126,12 +126,12 @@ export function EnvView() {
             value={newValue}
             onChange={e => setNewValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-            className="flex-[2] bg-gray-800 border border-gray-500 rounded px-3 py-2 text-sm font-mono text-gray-200 outline-none focus:border-blue-500 placeholder-gray-500"
+            className="md-field flex-[2] px-3 py-2 text-sm font-mono"
           />
           <button
             onClick={handleAdd}
             disabled={!newKey.trim()}
-            className="px-4 py-2 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="md-btn md-btn-filled px-4 py-2 text-sm"
           >
             Add
           </button>

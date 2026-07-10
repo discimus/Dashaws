@@ -51,11 +51,11 @@ export function CellOutput({ cell }: Props) {
 
   const getColor = (type: string): string => {
     switch (type) {
-      case 'error': return 'text-red-400';
-      case 'warn': return 'text-yellow-400';
-      case 'info': return 'text-blue-400';
-      case 'table': return 'text-purple-400';
-      default: return 'text-gray-300';
+      case 'error': return 'text-error';
+      case 'warn': return 'text-warning';
+      case 'info': return 'text-primary';
+      case 'table': return 'text-accent-purple';
+      default: return 'text-on-surface-variant';
     }
   };
 
@@ -74,21 +74,21 @@ export function CellOutput({ cell }: Props) {
   };
 
   return (
-    <div className="relative border-t border-gray-600">
+    <div className="relative border-t border-outline-variant">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="bg-gray-700/50 h-48 overflow-y-auto p-2 font-mono text-xs"
+        className="bg-surface-container-lowest h-48 overflow-y-auto p-2 font-mono text-xs"
       >
         {cell.output.length === 0 ? (
-          <span className="text-gray-400 italic">No output yet</span>
+          <span className="text-on-surface-variant/70 italic">No output yet</span>
         ) : (
           cell.output.map((entry, i) => (
-            <div key={i} className={`${getColor(entry.type)} py-0.5 border-b border-gray-600/50`}>
-              <span className="text-gray-400 mr-2 text-[10px]">
+            <div key={i} className={`${getColor(entry.type)} py-0.5 border-b border-outline-variant/40`}>
+              <span className="text-on-surface-variant/60 mr-2 text-[10px]">
                 {new Date(entry.timestamp).toLocaleTimeString()}
               </span>
-              <span className="text-gray-400 mr-1">[{entry.type}]</span>
+              <span className="text-on-surface-variant/60 mr-1">[{entry.type}]</span>
               {entry.args.map((arg, j) => (
                 <span key={j} className="whitespace-pre-wrap">
                   {j > 0 ? ' ' : ''}{formatValue(arg)}
@@ -101,7 +101,7 @@ export function CellOutput({ cell }: Props) {
       {hasNewOutput && cell.output.length > 0 && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded shadow-md transition-colors z-10"
+          className="md-btn md-btn-filled absolute bottom-2 right-2 text-sm px-3 py-1 shadow-md z-10"
         >
           ↓ New output
         </button>

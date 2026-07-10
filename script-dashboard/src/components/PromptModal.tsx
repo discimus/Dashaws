@@ -31,13 +31,13 @@ export function PromptModal({ open, onConfirm, onCancel, error }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-black/70" />
       <div
-        className="relative bg-gray-800 border border-gray-600 rounded-lg shadow-2xl w-80 p-5"
+        className="relative bg-surface-container-high border border-outline-variant rounded-2xl shadow-2xl w-80 p-5"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="text-sm font-semibold text-gray-200 mb-1">Secrets Locked</h3>
-        <p className="text-xs text-gray-400 mb-3">
+        <h3 className="text-sm font-semibold text-on-surface mb-1">Secrets Locked</h3>
+        <p className="text-xs text-on-surface-variant mb-3">
           Enter your secrets password to unlock and run this script.
         </p>
 
@@ -50,24 +50,24 @@ export function PromptModal({ open, onConfirm, onCancel, error }: Props) {
           onKeyDown={e => {
             if (e.key === 'Enter' && value) onConfirm(value);
           }}
-          className="w-full bg-gray-900 border border-gray-500 rounded px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 placeholder-gray-500"
+          className="md-field w-full px-3 py-2 text-sm"
         />
 
         {error && (
-          <p className="text-xs text-red-400 mt-2">{error}</p>
+          <p className="text-xs text-error mt-2">{error}</p>
         )}
 
         <div className="flex gap-2 mt-4">
           <button
             onClick={onCancel}
-            className="flex-1 px-3 py-1.5 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            className="md-btn md-btn-tonal flex-1 px-3 py-1.5 text-sm"
           >
             Cancel
           </button>
           <button
             onClick={() => value && onConfirm(value)}
             disabled={!value}
-            className="flex-1 px-3 py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="md-btn md-btn-filled flex-1 px-3 py-1.5 text-sm"
           >
             Unlock &amp; Run
           </button>

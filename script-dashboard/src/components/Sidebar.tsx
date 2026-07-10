@@ -28,8 +28,8 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
   }, [menuOpen]);
 
   return (
-    <aside className="flex-shrink-0 w-64 bg-gray-900 border-r border-gray-700 flex flex-col min-h-0">
-      <nav className="flex-shrink-0 p-3 space-y-1.5">
+    <aside className="flex-shrink-0 w-64 bg-surface-container border-r border-outline-variant flex flex-col min-h-0">
+      <nav className="flex-shrink-0 p-3 space-y-1">
         <SidebarLink active={view === 'overview'} onClick={() => onViewChange('overview')} label="Overview"
           info="Dashboard overview showing all scripts at a glance. Monitor statuses, recent outputs, and system stats in one place." />
         <SidebarLink active={view === 'scripts'} onClick={() => onViewChange('scripts')} label="Scripts"
@@ -46,27 +46,27 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
           info="Schedule scripts, queues, or pub/sub events using cron expressions (min hour dom month dow). Supports */n intervals, ranges, and comma-separated values. Polled every 15s." />
       </nav>
 
-      <div className="flex-shrink-0 mx-3 my-1 border-t border-gray-700" />
+      <div className="flex-shrink-0 mx-3 my-1 border-t border-outline-variant" />
 
       <div className="flex-shrink-0 px-3 py-2 flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Scripts</span>
+        <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Scripts</span>
         <div className="flex items-center gap-1">
           {selectedIds.length > 0 && (
-            <button onClick={clearSelection} className="text-[9px] text-gray-500 hover:text-gray-300 transition-colors">
+            <button onClick={clearSelection} className="text-[10px] text-primary hover:text-on-surface transition-colors">
               {selectedIds.length} selected
             </button>
           )}
           <div ref={menuRef} className="relative">
-            <button onClick={() => setMenuOpen(!menuOpen)} className="px-1 py-0.5 text-gray-500 hover:text-gray-300 text-[10px] font-bold">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="px-1.5 py-0.5 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 text-sm font-bold transition-colors">
               &#8942;
             </button>
             {menuOpen && (
-              <div className="absolute left-0 top-full mt-1 w-36 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-30 py-1">
+              <div className="md-menu absolute left-0 top-full mt-1 w-36 z-30">
                 <button
                   onClick={() => { setMenuOpen(false); setConfirmDeleteAll(true); }}
                   disabled={selectedIds.length === 0}
-                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    selectedIds.length > 0 ? 'text-red-400 hover:bg-red-900/30' : 'text-gray-600 cursor-not-allowed'
+                  className={`md-menu-item ${
+                    selectedIds.length > 0 ? 'text-error hover:bg-error/10' : 'text-on-surface-variant/40 cursor-not-allowed'
                   }`}
                 >
                   Delete {selectedIds.length || ''}
@@ -98,51 +98,51 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
                   onEditCell(cell.id);
                 }
               }}
-              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded text-sm text-left font-medium transition-colors ${
+              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-full text-sm text-left font-medium transition-colors ${
                 isSelected
-                  ? 'bg-blue-600/30 text-blue-200 ring-1 ring-blue-500/50'
+                  ? 'bg-primary-container text-on-primary-container'
                   : view === 'scripts' && cell.status === 'running'
-                  ? 'bg-gray-700/80 text-gray-100'
-                  : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
+                  ? 'bg-surface-container-high text-on-surface'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8'
               }`}
               title={`${cell.name}\n${cell.status} · ${cell.lastRunAt ? formatTimeAgo(cell.lastRunAt) : 'Not run'}`}
             >
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                isRunning ? 'bg-yellow-400 animate-pulse' :
-                cell.status === 'success' ? 'bg-green-400' :
-                cell.status === 'error' ? 'bg-red-400' :
-                'bg-gray-500'
+                isRunning ? 'bg-warning animate-pulse' :
+                cell.status === 'success' ? 'bg-success' :
+                cell.status === 'error' ? 'bg-error' :
+                'bg-outline'
               }`} />
               <span className="truncate">{cell.name}</span>
               {isRunning && (
-                <span className="text-[9px] text-yellow-500/70 ml-auto flex-shrink-0">{formatInterval(cell.intervalMs)}</span>
+                <span className="text-[9px] text-warning ml-auto flex-shrink-0">{formatInterval(cell.intervalMs)}</span>
               )}
             </button>
           );
         })}
       </div>
 
-      <div className="flex-shrink-0 p-3 border-t border-gray-700">
+      <div className="flex-shrink-0 p-3 border-t border-outline-variant">
         {selectedIds.length > 0 ? (
           <div className="flex gap-1.5">
             <button
               onClick={() => selectedIds.forEach(id => useCellsStore.getState().runOnce(id))}
-              className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="md-btn md-btn-filled flex-1 px-2 py-2 text-sm"
             >
               Run once {selectedIds.length}
             </button>
             {allSelectedRunning ? (
-              <button onClick={stopSelected} className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors">
+              <button onClick={stopSelected} className="md-btn md-btn-danger flex-1 px-2 py-2 text-sm">
                 Stop {selectedIds.length}
               </button>
             ) : (
-              <button onClick={startSelected} className="flex-1 px-2 py-2 rounded text-xs font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors">
+              <button onClick={startSelected} className="md-btn md-btn-success flex-1 px-2 py-2 text-sm">
                 Start {selectedIds.length}
               </button>
             )}
           </div>
         ) : (
-          <button onClick={addCell} className="w-full px-4 py-2.5 rounded text-sm font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors">
+          <button onClick={addCell} className="md-btn md-btn-filled w-full px-4 py-2.5 text-base">
             + Add Script
           </button>
         )}
@@ -153,12 +153,12 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
 
 function SidebarLink({ active, onClick, label, info }: { active: boolean; onClick: () => void; label: string; info?: string }) {
   return (
-    <button onClick={onClick} className={`w-full text-left px-4 py-2.5 rounded text-sm font-semibold transition-colors flex items-center gap-2 ${
-      active ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-700/40'
+    <button onClick={onClick} className={`w-full text-left px-4 py-2.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+      active ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8'
     }`}>
       <span>{label}</span>
       {info && (
-        <span className="text-gray-400 hover:text-gray-200 cursor-help text-xs flex-shrink-0" title={info}>
+        <span className="text-on-surface-variant hover:text-on-surface cursor-help text-xs flex-shrink-0" title={info}>
           &#9432;
         </span>
       )}
