@@ -154,7 +154,8 @@ print(df.head())
 
 # PostgreSQL with SQLAlchemy
 engine = sa.create_engine("postgresql://user:pass@host/db")
-df = pd.read_sql("SELECT * FROM users LIMIT 10", engine)
+with engine.connect() as conn:
+    df = pd.read_sql("SELECT * FROM users LIMIT 10", conn)
 print(df)
 
 # SQL Server with pyodbc
