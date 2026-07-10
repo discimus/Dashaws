@@ -120,6 +120,9 @@ function saveKeepUnlocked(v: boolean): void {
 }
 
 function saveSessionPassword(pw: string): void {
+  // NOTE: Plaintext password stored in sessionStorage for auto-unlock.
+  // sessionStorage is tab-scoped and cleared on tab close, but any XSS on
+  // the same origin could read it. Enable "keep unlocked" only on trusted devices.
   try {
     sessionStorage.setItem(SESSION_PW_KEY, pw);
   } catch { /* noop */ }

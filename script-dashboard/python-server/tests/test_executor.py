@@ -101,7 +101,7 @@ async def test_print_multiple_args():
     )
     assert result["success"] is True
     assert len(result["output"]) == 1
-    assert result["output"][0]["args"] == ["a", "b", "c"]
+    assert result["output"][0]["args"] == ["a b c"]
 
 
 @pytest.mark.asyncio

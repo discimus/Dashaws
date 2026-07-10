@@ -31,3 +31,5 @@ data-nodejs/*
 __pycache__/
 *.pyc
 *.pyo
+.venv/
+.piptools/

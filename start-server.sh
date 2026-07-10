@@ -31,9 +31,19 @@ check_frontend_build() {
 }
 
 check_python_deps() {
-    # Verify key dependency groups — if any fails, run full pip install
-    if python3 -c "
-import fastapi, uvicorn, apscheduler
+    # Create venv if it doesn't exist
+    if [ ! -d "$VENV_DIR" ]; then
+        echo "[preflight] Creating Python virtual environment..."
+        python3 -m venv "$VENV_DIR"
+        if [ ! -f "$VENV_PYTHON" ]; then
+            echo "ERROR: Failed to create virtual environment at $VENV_DIR"
+            exit 1
+        fi
+    fi
+
+    # Check dependencies using venv's python
+    if "$VENV_PYTHON" -c "
+import fastapi, uvicorn
 from Crypto.Cipher import AES
 import requests, feedparser, bs4, dotenv, xmltodict, pypdf
 import pandas, numpy, lxml, yaml, openpyxl, matplotlib
@@ -42,8 +52,10 @@ import sqlalchemy, psycopg2, pytest
         echo "[preflight] Python dependencies OK."
         return 0
     fi
+
     echo "[preflight] Python dependencies missing or incomplete. Installing..."
-    pip3 install -r python-server/requirements.txt
+    "$VENV_PYTHON" -m pip install --upgrade pip --quiet
+    "$VENV_PYTHON" -m pip install -r python-server/requirements.txt
     echo "[preflight] Python dependencies installed."
 }
 
@@ -120,6 +132,8 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR/script-dashboard"
+VENV_DIR="$PROJECT_DIR/.venv"
+VENV_PYTHON="$VENV_DIR/bin/python3"
 cd "$PROJECT_DIR"
 
 export PORT
@@ -138,7 +152,7 @@ case "$RUNTIME" in
         check_python_deps
         check_frontend_build
         echo ""
-        exec python3 python-server/main.py
+        exec "$VENV_PYTHON" python-server/main.py
         ;;
     node)
         echo "=== Dashaws Node.js Server ==="

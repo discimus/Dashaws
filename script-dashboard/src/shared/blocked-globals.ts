@@ -37,4 +37,6 @@ export const SERVER_BLOCKED_GLOBALS: Record<string, unknown> = {
   __filename: undefined,
   process: undefined,
   Function: undefined,
+  setImmediate: undefined,
+  queueMicrotask: undefined,
 };

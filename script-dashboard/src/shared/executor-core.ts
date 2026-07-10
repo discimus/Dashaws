@@ -30,6 +30,11 @@ export async function executeScript(
   signal: AbortSignal,
   config: ExecutorConfig
 ): Promise<ExecutionResult> {
+  const MAX_SCRIPT_SIZE = 1_000_000; // 1 MB
+  if (script.length > MAX_SCRIPT_SIZE) {
+    return { success: false, error: `Script exceeds max size (${MAX_SCRIPT_SIZE / 1000} KB)`, output: [], state: cellState };
+  }
+
   const output: LogEntry[] = [];
   const onLog = (entry: LogEntry) => output.push(entry);
 
