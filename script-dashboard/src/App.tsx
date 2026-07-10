@@ -11,12 +11,13 @@ import { PubSubView } from './components/PubSubView';
 import { CronView } from './components/CronView';
 import { HelpView } from './components/HelpView';
 import { Toast } from './components/Toast';
+import { LoginScreen } from './components/LoginScreen';
 import { InsecureContextBanner } from './components/InsecureContextBanner';
 
 export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons' | 'help';
 
 export default function App() {
-  const { loaded, init } = useCellsStore();
+  const { loaded, authenticated, authRequired, init } = useCellsStore();
   const [view, setView] = useState<View>('overview');
   const [focusCellId, setFocusCellId] = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export default function App() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-gray-400 bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen text-on-surface-variant bg-surface">
         <div className="text-center">
           <div className="text-lg mb-2">Loading dashboard...</div>
         </div>
@@ -39,13 +40,17 @@ export default function App() {
     );
   }
 
+  if (authRequired && !authenticated) {
+    return <LoginScreen />;
+  }
+
   return (
-    <div className="h-screen bg-gray-900 text-gray-100 overflow-hidden">
+    <div className="h-screen bg-surface text-on-surface overflow-hidden">
       <TopBar />
       <InsecureContextBanner />
       <div className="flex h-full pt-12">
         <Sidebar view={view} onViewChange={setView} onEditCell={navigateToEditor} />
-        <main className="flex-1 overflow-y-auto px-4 pb-4 bg-gray-800">
+        <main className="flex-1 overflow-y-auto px-4 pb-4 bg-surface">
           {view === 'overview' ? (
             <Overview onEditCell={navigateToEditor} />
           ) : view === 'scripts' ? (

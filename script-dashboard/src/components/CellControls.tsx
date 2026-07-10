@@ -22,6 +22,17 @@ const INTERVAL_PRESETS = [
   { label: '1h', value: 3600000 },
 ];
 
+const TIMEOUT_PRESETS = [
+  { label: 'No limit', value: 0 },
+  { label: '10s', value: 10000 },
+  { label: '30s', value: 30000 },
+  { label: '1m', value: 60000 },
+  { label: '5m', value: 300000 },
+  { label: '15m', value: 900000 },
+  { label: '30m', value: 1800000 },
+  { label: '1h', value: 3600000 },
+];
+
 export function CellControls({ cell, onToggleParams }: Props) {
   const { updateCell, deleteCell, startCell, stopCell, runOnce, clearOutput, runningIds, secretsLocked, tryUnlockSecrets, clientId } =
     useCellsStore();
@@ -105,7 +116,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
       {/* Name */}
       {isEditingName ? (
         <input
@@ -121,14 +132,14 @@ export function CellControls({ cell, onToggleParams }: Props) {
               setIsEditingName(false);
             }
           }}
-          className="bg-gray-800 border border-gray-500 rounded px-2 py-0.5 text-sm w-40 outline-none focus:border-blue-500"
+          className="md-field px-2 py-0.5 text-sm w-40"
         />
       ) : (
         <span
           className={`text-sm font-medium flex-shrink-0 ${
             lockedByOther
-              ? 'text-gray-500 cursor-not-allowed'
-              : 'cursor-pointer hover:text-blue-400'
+              ? 'text-on-surface-variant/50 cursor-not-allowed'
+              : 'cursor-pointer text-on-surface hover:text-primary'
           }`}
           onClick={() => {
             if (lockedByOther) return;
@@ -142,11 +153,12 @@ export function CellControls({ cell, onToggleParams }: Props) {
       )}
 
       {/* Actions */}
-      <div className="flex-1 flex items-center justify-center gap-1">
+      <div className="flex-1 flex flex-wrap items-center justify-center gap-1 min-w-0">
         <select
           value={cell.intervalMs}
           onChange={e => updateCell(cell.id, { intervalMs: Number(e.target.value) })}
-          className="bg-gray-800 border border-gray-500 rounded px-1.5 py-0.5 text-xs outline-none"
+          className="min-w-18 md-field px-1.5 py-0.5 text-xs"
+          title="Interval between runs"
         >
           {INTERVAL_PRESETS.map(p => (
             <option key={p.value} value={p.value}>
@@ -154,13 +166,23 @@ export function CellControls({ cell, onToggleParams }: Props) {
             </option>
           ))}
         </select>
+        <select
+          value={cell.timeoutMs ?? 0}
+          onChange={e => updateCell(cell.id, { timeoutMs: Number(e.target.value) || null })}
+          className="md-field px-1.5 py-0.5 text-xs"
+          title="Max execution time per run (0 = no limit)"
+        >
+          {TIMEOUT_PRESETS.map(p => (
+            <option key={p.value} value={p.value}>
+              {'\u23F1'} {p.label}
+            </option>
+          ))}
+        </select>
         <button
           onClick={handleStart}
           title={blocked ? 'Secrets locked — click to unlock' : isRunning ? 'Stop' : 'Loop'}
-          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-            isRunning
-              ? 'bg-red-600 hover:bg-red-700 text-white'
-              : 'bg-green-600 hover:bg-green-700 text-white'
+          className={`md-btn px-2 py-0.5 text-xs ${
+            isRunning ? 'md-btn-danger' : 'md-btn-success'
           }`}
         >
           {isRunning ? 'Stop' : <>{blocked && '\u{1F512} '}Loop</>}
@@ -169,7 +191,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
           <button
             onClick={handleRun}
             title={blocked ? 'Secrets locked — click to unlock' : 'Run once'}
-            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            className="md-btn md-btn-filled px-2 py-0.5 text-xs"
           >
             {blocked && '\u{1F512} '}Run once
           </button>
@@ -182,14 +204,14 @@ export function CellControls({ cell, onToggleParams }: Props) {
           <button
             onClick={onToggleParams}
             className={`text-[10px] font-medium transition-colors ${
-              parsedCount > 0 ? 'text-yellow-400' : 'text-gray-500 hover:text-gray-300'
+              parsedCount > 0 ? 'text-warning' : 'text-on-surface-variant hover:text-on-surface'
             }`}
             title="Edit parameters ($props)"
           >
             {parsedCount > 0 ? `⚙ ${parsedCount}` : '⚙'}
           </button>
           <span
-            className="text-gray-400 hover:text-gray-200 cursor-help text-xs"
+            className="text-on-surface-variant hover:text-on-surface cursor-help text-xs"
             title="Parameters define $props values passed into scripts. Overridden by queue or pubsub message bodies. Access inside scripts as $props.key."
           >
             &#9432;
@@ -199,23 +221,23 @@ export function CellControls({ cell, onToggleParams }: Props) {
         <span
           className={`inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider ${
             cell.status === 'running'
-              ? 'text-yellow-400'
+              ? 'text-warning'
               : cell.status === 'success'
-              ? 'text-green-400'
+              ? 'text-success'
               : cell.status === 'error'
-              ? 'text-red-400'
-              : 'text-gray-400'
+              ? 'text-error'
+              : 'text-on-surface-variant'
           }`}
         >
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               cell.status === 'running'
-                ? 'bg-yellow-400 animate-pulse'
+                ? 'bg-warning animate-pulse'
                 : cell.status === 'success'
-                ? 'bg-green-400'
+                ? 'bg-success'
                 : cell.status === 'error'
-                ? 'bg-red-400'
-                : 'bg-gray-500'
+                ? 'bg-error'
+                : 'bg-outline'
             }`}
           />
           {cell.status}
@@ -224,7 +246,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
         {cell.lockedBy && (
           <span
             className={`text-[10px] font-medium ${
-              cell.lockedBy === clientId ? 'text-blue-400' : 'text-yellow-400'
+              cell.lockedBy === clientId ? 'text-primary' : 'text-warning'
             }`}
             title={cell.lockedBy === clientId ? 'You are editing this script' : `Locked by client ${cell.lockedBy}`}
           >
@@ -235,22 +257,22 @@ export function CellControls({ cell, onToggleParams }: Props) {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="px-2 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+            className="px-2 py-1 rounded-full text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 transition-colors"
             title="More actions"
           >
             &#8942;
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-36 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+            <div className="md-menu absolute right-0 top-full mt-1 w-36 z-20">
               <button
                 onClick={handleClearLogs}
-                className="w-full text-left px-3 py-1.5 text-xs font-semibold text-gray-300 hover:bg-gray-700 transition-colors"
+                className="md-menu-item text-on-surface-variant hover:bg-on-surface/8"
               >
                 Clear logs
               </button>
               <button
                 onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
-                className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/30 transition-colors"
+                className="md-menu-item text-error hover:bg-error/10"
               >
                 Delete
               </button>

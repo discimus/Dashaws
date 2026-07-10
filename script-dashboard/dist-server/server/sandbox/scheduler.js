@@ -1,8 +1,8 @@
 import { BaseScheduler } from '../../src/shared/scheduler-base.js';
 import { parseMessageBody } from '../../src/shared/parse.js';
 const randomUUID = () => {
-    if (typeof crypto.randomUUID === 'function')
-        return randomUUID();
+    if (typeof crypto.randomUUID !== 'function')
+        return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = crypto.getRandomValues(new Uint8Array(1))[0] & 15;
         return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
@@ -51,8 +51,15 @@ export class ServerScheduler extends BaseScheduler {
                     if (!cell)
                         continue;
                     const msg = q.messages[0];
-                    q.messages = q.messages.slice(1);
-                    this.runOnce(subId, parseMessageBody(msg.body));
+                    void this.runOnce(subId, parseMessageBody(msg.body)).then(() => {
+                        q.messages = q.messages.slice(1);
+                    }).catch(() => {
+                        msg.retries += 1;
+                        const maxRetries = q.maxRetries ?? 3;
+                        if (msg.retries >= maxRetries) {
+                            q.messages = q.messages.slice(1);
+                        }
+                    });
                     break;
                 }
             }

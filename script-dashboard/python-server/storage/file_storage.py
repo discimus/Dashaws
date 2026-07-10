@@ -30,8 +30,10 @@ def _read_cells_sync() -> List[dict]:
 
 def _write_cells_sync(cells: List[dict]):
     _ensure_dir()
-    with open(CELLS_FILE, "w", encoding="utf-8") as f:
+    tmp_path = CELLS_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(cells, f, separators=(",", ":"), ensure_ascii=False)
+    os.replace(tmp_path, CELLS_FILE)
 
 
 async def _read_cells() -> List[dict]:
@@ -87,7 +89,10 @@ class FileStorageBackend:
     def _schedule_flush(self):
         if self._flush_task and not self._flush_task.done():
             return  # already scheduled
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
         self._flush_task = loop.create_task(self._debounced_flush())
 
     async def _debounced_flush(self):

@@ -9,9 +9,12 @@ from pathlib import Path
 
 from storage.file_storage import FileStorageBackend
 from sandbox.scheduler import ServerScheduler
-from crypto.secrets import encrypt_secrets, decrypt_secrets, hash_password
+from crypto.secrets import decrypt_secrets
 from utils.parse import parse_message_body
 
+
+auth_enabled = {"value": False}
+valid_tokens: set = set()
 
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
@@ -28,6 +31,16 @@ server_crons: List[dict] = []
 cells: List[dict] = []
 scheduler: Optional[ServerScheduler] = None
 auto_disabled_cron_names: set = set()
+
+def _log_task_error(task: asyncio.Task, cell_id: str):
+    try:
+        exc = task.exception()
+        if exc:
+            print("[scheduler] Unhandled error in task for cell {}: {}".format(cell_id, exc), flush=True)
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        pass
 
 server_languages: List[str] = ["python"]
 
@@ -48,9 +61,11 @@ def _load_json_sync(filename: str) -> dict:
 
 def _save_json_sync(filename: str, data):
     path = os.path.join(DATA_DIR, filename)
+    tmp_path = path + ".tmp"
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
+    os.replace(tmp_path, path)
 
 
 async def _load_json(filename: str) -> dict:
@@ -288,7 +303,8 @@ async def init_server():
         for cell_id in topic.get("subscriberIds", []):
             cell = get_cell(cell_id)
             if cell:
-                asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
+                task = asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
+                task.add_done_callback(lambda t, cid=cell_id: _log_task_error(t, cid))
 
     scheduler = ServerScheduler(
         get_cell=get_cell,

@@ -26,7 +26,14 @@ export function createApiRouter(): Router {
 
   router.put('/cells/:id', async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const cell: Cell = { ...req.body, id, updatedAt: Date.now() };
+    const allowed = ['name', 'language', 'script', 'intervalMs', 'timeoutMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'];
+    const filtered: Record<string, unknown> = {};
+    for (const k of allowed) {
+      if (Object.hasOwn(req.body as object, k)) {
+        filtered[k] = (req.body as Record<string, unknown>)[k];
+      }
+    }
+    const cell: Cell = { ...filtered, id, updatedAt: Date.now() } as Cell;
     await syncCell(cell);
     res.json(cell);
   });
@@ -94,8 +101,19 @@ export function createApiRouter(): Router {
   router.get('/env', (_req: Request, res: Response) => res.json(serverEnv));
 
   router.put('/env', (req: Request, res: Response) => {
-    Object.assign(serverEnv, req.body);
-    for (const k of Object.keys(serverEnv)) { if (!(k in req.body)) delete serverEnv[k]; }
+    const body = req.body || {};
+    if (typeof body !== 'object' || Array.isArray(body)) {
+      return res.status(400).json({ error: 'Expected object' });
+    }
+    for (const k of Object.keys(body)) {
+      if (typeof k !== 'string' || k.length > 128) continue;
+      if (typeof body[k] !== 'string') continue;
+      if (body[k].length > 4096) continue;
+      serverEnv[k] = body[k];
+    }
+    for (const k of Object.keys(serverEnv)) {
+      if (!Object.hasOwn(body, k)) delete serverEnv[k];
+    }
     savePersistedState();
     res.json(serverEnv);
   });

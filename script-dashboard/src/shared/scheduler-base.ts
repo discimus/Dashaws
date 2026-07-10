@@ -31,6 +31,7 @@ export abstract class BaseScheduler {
     const ac = new AbortController();
     const { env, secrets, secretsObj } = this.getEnv();
     const resolvedProps = props ?? parseParams(cell.params);
+    const config = { ...this.executorConfig, timeoutMs: cell.timeoutMs ?? undefined };
 
     const result = await executeScript(
       cell.script,
@@ -41,7 +42,7 @@ export abstract class BaseScheduler {
       resolvedProps,
       this.buildCellsAPI(),
       ac.signal,
-      this.executorConfig
+      config
     );
 
     this.onResult(cellId, result);
@@ -61,6 +62,7 @@ export abstract class BaseScheduler {
       try {
         const { env, secrets, secretsObj } = this.getEnv();
         const props = parseParams(cell.params);
+        const config = { ...this.executorConfig, timeoutMs: cell.timeoutMs ?? undefined };
         const result = await executeScript(
           cell.script,
           { ...cell.state },
@@ -70,7 +72,7 @@ export abstract class BaseScheduler {
           props,
           this.buildCellsAPI(),
           ac.signal,
-          this.executorConfig
+          config
         );
         this.onResult(cellId, result);
       } catch {
