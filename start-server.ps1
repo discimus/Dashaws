@@ -68,6 +68,7 @@ import sqlalchemy, psycopg2, pytest
     }
     Write-Host "[preflight] Python dependencies missing or incomplete. Installing..."
     & $script:venvPython -m pip install --upgrade pip --quiet
+    & $script:venvPython -m pip install setuptools wheel --quiet
     & $script:venvPython -m pip install -r python-server/requirements.txt
     if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit 1 }
     Write-Host "[preflight] Python dependencies installed."

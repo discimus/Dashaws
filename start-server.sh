@@ -55,6 +55,7 @@ import sqlalchemy, psycopg2, pytest
 
     echo "[preflight] Python dependencies missing or incomplete. Installing..."
     "$VENV_PYTHON" -m pip install --upgrade pip --quiet
+    "$VENV_PYTHON" -m pip install setuptools wheel --quiet
     "$VENV_PYTHON" -m pip install -r python-server/requirements.txt
     echo "[preflight] Python dependencies installed."
 }
