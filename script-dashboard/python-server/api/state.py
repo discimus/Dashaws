@@ -13,7 +13,7 @@ from utils.parse import parse_message_body
 
 
 auth_enabled: dict[str, bool] = {"value": False}
-valid_tokens: set[str] = set()
+valid_tokens: dict[str, float] = {}
 
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
@@ -43,10 +43,17 @@ def _log_task_error(task: asyncio.Task, cell_id: str):
         pass
 
 
+def _pubsub_task_done(task: asyncio.Task) -> None:
+    _pending_pubsub_tasks.discard(task)
+
+
 server_languages: list[str] = ["python"]
 
 # Debounce state for persist_state
 _persist_task: asyncio.Task | None = None
+
+# Track pubsub-spawned tasks so they can be cancelled on shutdown
+_pending_pubsub_tasks: set[asyncio.Task] = set()
 
 
 def _load_json_sync(filename: str) -> dict:
@@ -304,6 +311,8 @@ async def init_server() -> None:
             if cell and scheduler:
                 task = asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
                 task.add_done_callback(lambda t, cid=cell_id: _log_task_error(t, cid))
+                task.add_done_callback(_pubsub_task_done)
+                _pending_pubsub_tasks.add(task)
 
     scheduler = ServerScheduler(
         get_cell=get_cell,
@@ -323,3 +332,11 @@ async def init_server() -> None:
 
     if server_secrets_blob and not server_secrets_password:
         auto_disable_secret_crons()
+
+
+async def cancel_pending_pubsub_tasks() -> None:
+    for task in list(_pending_pubsub_tasks):
+        task.cancel()
+    if _pending_pubsub_tasks:
+        await asyncio.gather(*_pending_pubsub_tasks, return_exceptions=True)
+        _pending_pubsub_tasks.clear()

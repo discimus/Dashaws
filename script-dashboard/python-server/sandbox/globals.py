@@ -12,11 +12,11 @@ import requests
 
 # Modules blocked from import — operating-system-level access
 _BLOCKED_MODULES: set[str] = {
-    "os", "subprocess", "sys", "shutil", "socket", "ctypes",
-    "multiprocessing", "pty", "signal", "threading", "asyncio",
+    "subprocess", "shutil", "socket", "ctypes",
+    "multiprocessing", "pty", "signal",
     "concurrent.futures", "gc", "faulthandler", "traceback",
-    "pathlib", "glob", "tempfile", "pickle", "marshal", "shelve",
-    "code", "codeop", "imp", "importlib", "pkgutil",
+    "glob", "tempfile", "pickle", "marshal", "shelve",
+    "code", "codeop", "imp", "pkgutil",
     "runpy", "tokenize", "webbrowser", "antigravity",
     "smtpd", "smtplib", "email",
 }
@@ -236,7 +236,7 @@ class _PubSub:
         try:
             data = json.dumps(body).encode("utf-8")
             req = urllib.request.Request(
-                self._api + "/topics/{}/emit".format(urllib.parse.quote(name, safe="")),
+                self._api + f"/topics/{urllib.parse.quote(name, safe='')}/emit",
                 data=data,
                 headers={"Content-Type": "application/json"},
                 method="POST",

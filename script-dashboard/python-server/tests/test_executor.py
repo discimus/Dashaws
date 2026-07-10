@@ -267,9 +267,9 @@ async def test_import_pyodbc():
 
 
 @pytest.mark.asyncio
-async def test_import_pymssql():
+async def test_import_psycopg2():
     result = await execute_script(
-        'import pymssql\nprint(hasattr(pymssql, "connect"))',
+        'import psycopg2\nprint(hasattr(psycopg2, "connect"))',
         {}, {}, {}, {}, "http://localhost:3456/api"
     )
     assert result["success"] is True

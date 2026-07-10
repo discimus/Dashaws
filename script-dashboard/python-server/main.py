@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from api.routes import router as api_router
-from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all, auth_enabled, valid_tokens
+from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all, auth_enabled, valid_tokens, cancel_pending_pubsub_tasks
 
 COOKIE_NAME = "dashaws_token"
 TOKEN_MAX_AGE_S = 24 * 60 * 60
@@ -113,10 +113,15 @@ def _clear_auth_cookie(response: JSONResponse) -> None:
 async def _cleanup_old_attempts():
     while True:
         await asyncio.sleep(60)
-        cutoff = time.time() * 1000 - 10 * 60 * 1000
+        now = time.time()
+        cutoff = now * 1000 - 10 * 60 * 1000
         for ip in list(_failed_attempts.keys()):
             if _failed_attempts[ip]["firstAttempt"] < cutoff:
                 del _failed_attempts[ip]
+        token_cutoff = now - TOKEN_MAX_AGE_S
+        for t, ts in list(valid_tokens.items()):
+            if ts < token_cutoff:
+                del valid_tokens[t]
 
 
 @asynccontextmanager
@@ -141,6 +146,7 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
     if scheduler:
         await scheduler.shutdown()
+    await cancel_pending_pubsub_tasks()
     await flush_all()
     print("Shutdown complete.")
 
@@ -165,6 +171,10 @@ async def auth_middleware(request: Request, call_next):
     token = _extract_token(request)
     if not token or token not in valid_tokens:
         return JSONResponse(status_code=401, content={"error": "Authentication required"})
+
+    if time.time() - valid_tokens[token] > TOKEN_MAX_AGE_S:
+        valid_tokens.pop(token, None)
+        return JSONResponse(status_code=401, content={"error": "Token expired"})
 
     return await call_next(request)
 
@@ -213,7 +223,7 @@ async def auth_login(body: dict = Body(...), request: Request = None):
     _clear_failed_attempts(ip)
 
     token = secrets.token_hex(32)
-    valid_tokens.add(token)
+    valid_tokens[token] = time.time()
 
     response = JSONResponse(content={"token": token})
     _set_auth_cookie(response, token)
@@ -234,7 +244,7 @@ async def auth_verify():
 async def auth_logout(request: Request):
     token = _extract_token(request)
     if token:
-        valid_tokens.discard(token)
+        valid_tokens.pop(token, None)
     response = JSONResponse(content={"ok": True})
     _clear_auth_cookie(response)
     return response
