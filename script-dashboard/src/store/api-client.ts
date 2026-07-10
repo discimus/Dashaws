@@ -4,13 +4,42 @@ import type { EncryptedBlob } from '../crypto/secrets';
 
 export class ApiClient implements StorageBackend {
   private baseUrl: string;
+  private token: string | null = null;
+  private onAuthError: (() => void) | null = null;
 
   constructor(baseUrl = '/api') {
     this.baseUrl = baseUrl;
   }
 
+  setToken(token: string | null): void {
+    this.token = token;
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  setOnAuthError(cb: (() => void) | null): void {
+    this.onAuthError = cb;
+  }
+
   private async fetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, init);
+    const headers: Record<string, string> = {
+      ...(init?.headers as Record<string, string> || {}),
+    };
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      ...init,
+      headers,
+    });
+    if (res.status === 401) {
+      this.token = null;
+      this.onAuthError?.();
+      const err = await res.json().catch(() => ({ error: 'Authentication required' }));
+      throw new Error(err.error || 'Authentication required');
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -33,6 +62,53 @@ export class ApiClient implements StorageBackend {
     } catch {
       return ['javascript'];
     }
+  }
+
+  async login(password: string): Promise<{ token: string }> {
+    const res = await fetch(`${this.baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      const retryAfter = data.retryAfter || 1000;
+      const attempts = data.attempts || 1;
+      const err = new Error('Too many attempts') as Error & { retryAfter: number; attempts: number };
+      err.retryAfter = retryAfter;
+      err.attempts = attempts;
+      throw err;
+    }
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: 'Invalid password' }));
+      const err = new Error(errData.error || 'Invalid password') as Error & { attempts?: number };
+      if (errData.attempts) err.attempts = errData.attempts;
+      throw err;
+    }
+    return res.json();
+  }
+
+  async getAuthStatus(): Promise<{ authEnabled: boolean }> {
+    try {
+      const res = await fetch(`${this.baseUrl}/auth/status`);
+      return res.json();
+    } catch {
+      return { authEnabled: false };
+    }
+  }
+
+  async verifyAuth(): Promise<boolean> {
+    try {
+      await this.fetch('/auth/verify');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async logout(): Promise<void> {
+    await this.fetch('/auth/logout', { method: 'POST' });
+    this.token = null;
   }
 
   // StorageBackend implementation
@@ -59,6 +135,29 @@ export class ApiClient implements StorageBackend {
 
   async delete(id: string): Promise<void> {
     await this.fetch(`/cells/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async lockCell(id: string, clientId: string): Promise<{ ok: boolean; lockedBy?: string }> {
+    try {
+      return await this.fetch(`/cells/${encodeURIComponent(id)}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('Locked by another client')) {
+        return { ok: false };
+      }
+      return { ok: false };
+    }
+  }
+
+  async unlockCell(id: string, clientId: string): Promise<void> {
+    await this.fetch(`/cells/${encodeURIComponent(id)}/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId }),
+    });
   }
 
   // Execution

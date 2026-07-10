@@ -14,12 +14,14 @@ interface Props {
 
 export function CellCard({ cell, highlighted }: Props) {
   const [showParams, setShowParams] = useState(false);
+  const clientId = useCellsStore(s => s.clientId);
+  const lockedByOther = cell.lockedBy != null && cell.lockedBy !== clientId;
 
   return (
-    <div className={`border rounded-lg overflow-hidden bg-gray-700/30 hover:border-gray-500 transition-colors ${
-      highlighted ? 'script-flash' : 'border-gray-600'
+    <div className={`border rounded-xl overflow-hidden bg-surface-container-low transition-colors ${
+      highlighted ? 'script-flash' : lockedByOther ? 'border-warning/70' : 'border-outline-variant hover:border-outline'
     }`}>
-      <div className="px-3 py-2 border-b border-gray-600 bg-gray-700/70">
+      <div className="px-3 py-2 border-b border-outline-variant bg-surface-container">
         <CellControls cell={cell} onToggleParams={() => setShowParams(!showParams)} />
       </div>
 
@@ -31,7 +33,7 @@ export function CellCard({ cell, highlighted }: Props) {
 
       <CellEditor cell={cell} />
 
-      <div className="px-3 py-1 border-t border-gray-600 bg-gray-700/70 flex items-center justify-between text-[10px] text-gray-300">
+      <div className="px-3 py-1 border-t border-outline-variant bg-surface-container flex items-center justify-between text-[10px] text-on-surface-variant">
         <span>Script ID: {cell.id.slice(0, 8)}...</span>
         <span>
           {cell.lastRunAt ? `Last run: ${formatTimeAgo(cell.lastRunAt)}` : 'Not run yet'}

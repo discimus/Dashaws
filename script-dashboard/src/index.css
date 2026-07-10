@@ -1,36 +1,262 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ */
+/*  Material Design 3 — design tokens                                  */
+/*  Dark scheme (neutral surfaces + blue primary). Elevation in dark   */
+/*  is expressed with progressively lighter "surface container" tones. */
+/* ------------------------------------------------------------------ */
+@theme {
+  --font-sans: "Roboto", "Inter", "Segoe UI", system-ui, -apple-system,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Roboto Mono", "JetBrains Mono", "Cascadia Code", ui-monospace,
+    "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Neutral surfaces (elevation tones) */
+  --color-surface: #121316;
+  --color-surface-container-lowest: #0c0d0f;
+  --color-surface-container-low: #191a1e;
+  --color-surface-container: #1d1e22;
+  --color-surface-container-high: #282a2f;
+  --color-surface-container-highest: #33353b;
+  --color-on-surface: #e3e2e6;
+  --color-on-surface-variant: #c4c6cf;
+  --color-outline: #8e9099;
+  --color-outline-variant: #43474e;
+
+  /* Primary — blue */
+  --color-primary: #a9c7ff;
+  --color-on-primary: #00305f;
+  --color-primary-container: #1f4784;
+  --color-on-primary-container: #d6e3ff;
+
+  /* Error — red */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Success — green */
+  --color-success: #7cdba1;
+  --color-on-success: #00391f;
+  --color-success-container: #00522f;
+  --color-on-success-container: #98f7bb;
+
+  /* Warning — amber */
+  --color-warning: #f3c969;
+  --color-on-warning: #3e2e00;
+  --color-warning-container: #574400;
+  --color-on-warning-container: #ffdea1;
+
+  /* Domain accents */
+  --color-accent-orange: #ffb68c;
+  --color-on-accent-orange: #4e2600;
+  --color-accent-pink: #ffb1c7;
+  --color-on-accent-pink: #5e1133;
+  --color-accent-purple: #d9bafb;
+  --color-on-accent-purple: #40125e;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+  }
+  /* Calmer, thinner scrollbars that sit on the dark surfaces */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-outline-variant) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-outline-variant);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-outline);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Material components                                                */
+/* ------------------------------------------------------------------ */
+@layer components {
+  /* --- Buttons: pill shape + tonal state layer (Material 3) --------- */
+  .md-btn {
+    @apply relative inline-flex items-center justify-center gap-1.5 rounded-full
+      font-medium overflow-hidden select-none transition-shadow duration-150
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60;
+  }
+  .md-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 150ms ease;
+    pointer-events: none;
+  }
+  .md-btn:hover:not(:disabled)::after {
+    opacity: 0.08;
+  }
+  .md-btn:focus-visible::after {
+    opacity: 0.12;
+  }
+  .md-btn:active:not(:disabled)::after {
+    opacity: 0.16;
+  }
+  .md-btn:disabled {
+    opacity: 0.38;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .md-btn-filled {
+    @apply bg-primary text-on-primary;
+  }
+  .md-btn-filled:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+  .md-btn-tonal {
+    @apply bg-surface-container-highest text-on-surface;
+  }
+  .md-btn-danger {
+    @apply bg-error text-on-error focus-visible:ring-error/60;
+  }
+  .md-btn-danger:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+  .md-btn-success {
+    @apply bg-success text-on-success focus-visible:ring-success/60;
+  }
+  .md-btn-success:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+  .md-btn-orange {
+    @apply bg-accent-orange text-on-accent-orange focus-visible:ring-accent-orange/60;
+  }
+  .md-btn-orange:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+  .md-btn-pink {
+    @apply bg-accent-pink text-on-accent-pink focus-visible:ring-accent-pink/60;
+  }
+  .md-btn-pink:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+  .md-btn-purple {
+    @apply bg-accent-purple text-on-accent-purple focus-visible:ring-accent-purple/60;
+  }
+  .md-btn-purple:hover:not(:disabled) {
+    @apply shadow-md;
+  }
+
+  /* --- Text fields -------------------------------------------------- */
+  .md-field {
+    @apply bg-surface-container-highest text-on-surface rounded-lg border
+      border-outline-variant outline-none transition-colors
+      placeholder:text-on-surface-variant/60;
+  }
+  .md-field:focus {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+
+  /* Native selects: hide default chevron and draw a Material one */
+  select.md-field {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c4c6cf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem 1rem;
+    padding-right: 1.75rem;
+  }
+
+  /* --- Elevated surfaces (menus, dialogs, popovers) ----------------- */
+  .md-menu {
+    @apply bg-surface-container-high border border-outline-variant rounded-xl
+      shadow-xl py-1.5;
+  }
+  .md-menu-item {
+    @apply w-full text-left px-3 py-2 text-sm font-medium transition-colors;
+  }
+
+  /* --- Card ---------------------------------------------------------- */
+  .md-card {
+    @apply bg-surface-container-low border border-outline-variant rounded-xl;
+  }
+
+  /* --- Chip ---------------------------------------------------------- */
+  .md-chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]
+      font-medium bg-surface-container-highest text-on-surface-variant;
+  }
+
+  /* --- Inline code --------------------------------------------------- */
+  .md-code {
+    @apply font-mono rounded bg-surface-container-highest px-1.5 py-0.5;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Script run flash (retuned to primary token)                        */
+/* ------------------------------------------------------------------ */
 @keyframes script-flash {
-  0%   { border-color: rgb(59 130 246 / 0.6); box-shadow: 0 0 0 2px rgb(59 130 246 / 0.35); }
-  30%  { border-color: rgb(96 165 250 / 0.9); box-shadow: 0 0 0 4px rgb(96 165 250 / 0.5); }
-  100% { border-color: rgb(59 130 246 / 0);   box-shadow: 0 0 0 0 rgb(59 130 246 / 0); }
+  0% {
+    border-color: rgb(169 199 255 / 0.6);
+    box-shadow: 0 0 0 2px rgb(169 199 255 / 0.35);
+  }
+  30% {
+    border-color: rgb(169 199 255 / 0.95);
+    box-shadow: 0 0 0 4px rgb(169 199 255 / 0.5);
+  }
+  100% {
+    border-color: rgb(169 199 255 / 0);
+    box-shadow: 0 0 0 0 rgb(169 199 255 / 0);
+  }
 }
 
 .script-flash {
   animation: script-flash 1.2s ease-out forwards;
 }
 
-/* Autocomplete tooltip */
+/* ------------------------------------------------------------------ */
+/*  CodeMirror autocomplete tooltip (aligned to Material surfaces)     */
+/* ------------------------------------------------------------------ */
 .cm-tooltip.cm-tooltip-autocomplete {
-  background-color: #1e293b;
-  border: 1px solid #334155;
+  background-color: var(--color-surface-container-high);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
 }
 
 .cm-tooltip.cm-tooltip-autocomplete ul li {
-  color: #cbd5e1;
+  color: var(--color-on-surface-variant);
 }
 
 .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] {
-  background-color: #2563eb;
-  color: #fff;
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
 }
 
 .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail {
-  color: #93c5fd;
+  color: var(--color-primary);
 }
 
 .cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
-  color: #64748b;
+  color: var(--color-outline);
 }
 
 .cm-tooltip.cm-tooltip-autocomplete .cm-completionIcon {
@@ -38,6 +264,6 @@
 }
 
 .cm-tooltip.cm-tooltip-autocomplete .cm-completionMatchedText {
-  color: #60a5fa;
+  color: var(--color-primary);
   font-weight: 600;
 }

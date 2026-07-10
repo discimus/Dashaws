@@ -14,11 +14,11 @@ export function Overview({ onEditCell }: Props) {
   if (cells.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="text-gray-400 mb-2 text-4xl">&#9633;</div>
-        <p className="text-gray-400 mb-4">No scripts yet. Create your first script.</p>
+        <div className="text-on-surface-variant mb-2 text-4xl">&#9633;</div>
+        <p className="text-on-surface-variant mb-4">No scripts yet. Create your first script.</p>
         <button
           onClick={addCell}
-          className="px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
+          className="md-btn md-btn-filled px-5 py-2.5 text-base"
         >
           + Add Script
         </button>
@@ -31,16 +31,16 @@ export function Overview({ onEditCell }: Props) {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
+      <div className="sticky top-0 z-10 bg-surface pt-3 pb-3">
         <div className="grid grid-cols-4 gap-3">
-          <StatBox label="Scripts" value={cells.length} color="text-blue-400" />
-          <StatBox label="Running" value={runningIds.length} color="text-yellow-400" />
-          <StatBox label="Success" value={successCount} color="text-green-400" />
-          <StatBox label="Errors" value={errorCount} color={errorCount > 0 ? 'text-red-400' : 'text-gray-500'} />
+          <StatBox label="Scripts" value={cells.length} color="text-primary" />
+          <StatBox label="Running" value={runningIds.length} color="text-warning" />
+          <StatBox label="Success" value={successCount} color="text-success" />
+          <StatBox label="Errors" value={errorCount} color={errorCount > 0 ? 'text-error' : 'text-on-surface-variant'} />
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Scripts</h2>
-          <span className="text-xs text-gray-400">{cells.length} total</span>
+          <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">Scripts</h2>
+          <span className="text-xs text-on-surface-variant">{cells.length} total</span>
         </div>
       </div>
 
@@ -65,9 +65,9 @@ export function Overview({ onEditCell }: Props) {
 
 function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
+    <div className="bg-surface-container border border-outline-variant rounded-xl px-4 py-3">
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
+      <div className="text-xs text-on-surface-variant mt-0.5">{label}</div>
     </div>
   );
 }
@@ -134,7 +134,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
 
   return (
     <div
-      className="border border-gray-600 rounded-lg bg-gray-700/60 hover:border-gray-500 transition-colors p-3 cursor-pointer"
+      className="md-card hover:border-outline transition-colors p-3 cursor-pointer"
       onClick={onEdit}
     >
       <div className="flex items-start justify-between mb-2">
@@ -142,17 +142,17 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
           <span
             className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${
               cell.status === 'running'
-                ? 'bg-yellow-400 animate-pulse'
+                ? 'bg-warning animate-pulse'
                 : cell.status === 'success'
-                ? 'bg-green-400'
+                ? 'bg-success'
                 : cell.status === 'error'
-                ? 'bg-red-400'
-                : 'bg-gray-500'
+                ? 'bg-error'
+                : 'bg-outline'
             }`}
           />
           <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{cell.name}</div>
-            <div className="text-[10px] text-gray-400">
+            <div className="text-sm font-medium truncate text-on-surface">{cell.name}</div>
+            <div className="text-[10px] text-on-surface-variant">
               Every {formatInterval(cell.intervalMs)}
               {cell.lastRunAt && ` · ${formatTimeAgo(cell.lastRunAt)}`}
             </div>
@@ -161,12 +161,12 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
         <span
               className={`text-[10px] font-medium uppercase flex-shrink-0 ml-2 ${
                 cell.status === 'running'
-                  ? 'text-yellow-400'
+                  ? 'text-warning'
                   : cell.status === 'error'
-                  ? 'text-red-400'
+                  ? 'text-error'
                   : cell.status === 'success'
-                  ? 'text-green-400'
-                  : 'text-gray-400'
+                  ? 'text-success'
+                  : 'text-on-surface-variant'
               }`}
         >
           {cell.status}
@@ -174,19 +174,19 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
       </div>
 
       {lastOutputs.length > 0 && (
-        <div className="border-t border-gray-600/50 pt-2 mb-2 min-h-0">
+        <div className="border-t border-outline-variant pt-2 mb-2 min-h-0">
           {lastOutputs.map((entry, i: number) => (
             <div
               key={i}
               className={`text-[10px] font-mono leading-relaxed truncate ${
                 entry.type === 'error'
-                  ? 'text-red-400'
+                  ? 'text-error'
                   : entry.type === 'warn'
-                  ? 'text-yellow-400'
-                  : 'text-gray-300'
+                  ? 'text-warning'
+                  : 'text-on-surface-variant'
               }`}
             >
-              <span className="text-gray-400 mr-1">[{entry.type}]</span>
+              <span className="text-on-surface-variant/70 mr-1">[{entry.type}]</span>
               {entry.args.map((a: unknown) => formatAtom(a)).join(' ')}
             </div>
           ))}
@@ -197,7 +197,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
         {isRunning ? (
           <button
             onClick={onStop}
-            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+            className="md-btn md-btn-danger px-2.5 py-1 text-xs"
           >
             Stop
           </button>
@@ -205,7 +205,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
           <button
             onClick={handleStart}
             title={blocked ? 'Secrets locked — click to unlock' : 'Loop'}
-            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-green-600/80 hover:bg-green-600 text-white transition-colors"
+            className="md-btn md-btn-success px-2.5 py-1 text-xs"
           >
             {blocked && '\u{1F512} '}Loop
           </button>
@@ -214,7 +214,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
           <button
             onClick={handleRun}
             title={blocked ? 'Secrets locked — click to unlock' : 'Run once'}
-            className="px-2.5 py-1 rounded text-[10px] font-semibold bg-blue-600/60 hover:bg-blue-600 text-white transition-colors"
+            className="md-btn md-btn-filled px-2.5 py-1 text-xs"
           >
             {blocked && '\u{1F512} '}Run once
           </button>
@@ -223,22 +223,22 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="px-2 py-1 rounded text-[10px] font-semibold text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+            className="px-2 py-1 rounded-full text-[10px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8 transition-colors"
             title="More actions"
           >
             &#8942;
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-32 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 py-1">
+            <div className="md-menu absolute right-0 top-full mt-1 w-32 z-20">
               <button
                 onClick={() => { onClear(); setMenuOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold text-gray-300 hover:bg-gray-700 transition-colors"
+                className="md-menu-item text-[10px] text-on-surface-variant hover:bg-on-surface/8"
               >
                 Clear logs
               </button>
               <button
                 onClick={onEdit}
-                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold text-blue-400 hover:bg-blue-900/20 transition-colors"
+                className="md-menu-item text-[10px] text-primary hover:bg-primary/10"
               >
                 Edit script
               </button>

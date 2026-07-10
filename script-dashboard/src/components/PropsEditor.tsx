@@ -21,8 +21,8 @@ export function PropsEditor({ cell, onSave }: Props) {
     if (!containerRef.current) return;
 
     const jsonTheme = Prec.high(EditorView.theme({
-      '&': { backgroundColor: '#1e2a35 !important' },
-      '.cm-gutters': { backgroundColor: '#19232d !important', borderRight: '1px solid #334155 !important', color: '#64748b !important' },
+      '&': { backgroundColor: '#191a1e !important' },
+      '.cm-gutters': { backgroundColor: '#141316 !important', borderRight: '1px solid #43474e !important', color: '#8e9099 !important' },
     }));
 
     const autoHeight = EditorView.theme({
@@ -118,10 +118,10 @@ export function PropsEditor({ cell, onSave }: Props) {
   }, [cell.params]);
 
   return (
-    <div className="border-t border-gray-600/50">
+    <div className="border-t border-outline-variant">
       <div className="px-3 py-1.5 flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">$props (JSON)</span>
-        <span className="text-[10px] text-gray-600">— passed via queue or pubsub messages</span>
+        <span className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">$props (JSON)</span>
+        <span className="text-[10px] text-on-surface-variant/60">— passed via queue or pubsub messages</span>
       </div>
       <div ref={containerRef} className="codemirror-editor text-xs" />
     </div>

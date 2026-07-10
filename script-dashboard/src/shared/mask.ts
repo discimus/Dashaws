@@ -1,4 +1,4 @@
-export function maskValue(val: unknown, secrets: Set<string>): unknown {
+export function maskValue(val: unknown, secrets: Set<string>, seen = new WeakSet<object>()): unknown {
   if (typeof val === 'string') {
     let result = val;
     for (const secret of secrets) {
@@ -12,13 +12,17 @@ export function maskValue(val: unknown, secrets: Set<string>): unknown {
   }
 
   if (Array.isArray(val)) {
-    return val.map(v => maskValue(v, secrets));
+    if (seen.has(val)) return '[Circular]';
+    seen.add(val);
+    return val.map(v => maskValue(v, secrets, seen));
   }
 
   if (val !== null && typeof val === 'object') {
+    if (seen.has(val as object)) return '[Circular]';
+    seen.add(val as object);
     const masked: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
-      masked[k] = maskValue(v, secrets);
+      masked[k] = maskValue(v, secrets, seen);
     }
     return masked;
   }

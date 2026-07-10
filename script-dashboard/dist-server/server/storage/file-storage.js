@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs';
 import { join } from 'path';
 const DATA_DIR = process.env.DASHAWS_DATA_DIR || join(process.cwd(), 'data-nodejs');
 const CELLS_FILE = join(DATA_DIR, 'cells.json');
+const CELLS_TMP = join(DATA_DIR, 'cells.json.tmp');
 function ensureDir() {
     if (!existsSync(DATA_DIR))
         mkdirSync(DATA_DIR, { recursive: true });
@@ -18,7 +19,8 @@ function readCells() {
 }
 function writeCells(cells) {
     ensureDir();
-    writeFileSync(CELLS_FILE, JSON.stringify(cells, null, 2));
+    writeFileSync(CELLS_TMP, JSON.stringify(cells, null, 2));
+    renameSync(CELLS_TMP, CELLS_FILE);
 }
 export class FileStorageBackend {
     async list() {

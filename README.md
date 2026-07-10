@@ -1,6 +1,6 @@
 # Dashaws
 
-⚠️ Warning: This application was developed using AI (vibecoding).
+ℹ️ Disclosure: This application was developed using AI (vibecoding).
 
 A local-first dashboard for scheduling and executing user-defined scripts (JavaScript or Python) on intervals, cron expressions, queues, and pub/sub events. Supports standalone browser mode (JS only) and optional server mode with dual-runtime support (Node.js and Python/FastAPI).
 

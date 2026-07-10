@@ -19,6 +19,7 @@ import {
 
 let apiClient: ApiClient | null = null;
 let isServerMode = false;
+let initStarted = false;
 
 const storage = new LocalStorageBackend();
 const ENV_STORAGE_KEY = 'dashaws-env';
@@ -38,6 +39,10 @@ function startServerPolling() {
         const merged = remote.map(r => {
           const local = state.cells.find(c => c.id === r.id);
           if (!local) return r;
+          // If we hold the lock, keep our local script/name content
+          if (r.lockedBy && r.lockedBy === state.clientId) {
+            return { ...r, script: local.script, name: local.name, updatedAt: local.updatedAt };
+          }
           // Server is source of truth for status, lastRunAt, output, state
           // But preserve local script/name if user is editing
           if (local.updatedAt > r.updatedAt) return local;
@@ -173,6 +178,8 @@ function saveCrons(c: CronEntry[]) {
 interface CellsState {
   cells: Cell[];
   loaded: boolean;
+  authenticated: boolean;
+  authRequired: boolean;
   runningIds: string[];
   env: Record<string, string>;
   secretsLocked: boolean;
@@ -184,8 +191,12 @@ interface CellsState {
   eventTopics: Record<string, EventTopic>;
   crons: CronEntry[];
   languages: string[];
+  clientId: string;
+  editingCellId: string | null;
 
   init: () => Promise<void>;
+  login: (password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   addCell: () => Promise<void>;
   updateCell: (id: string, updates: Partial<Cell>) => Promise<void>;
   deleteCell: (id: string) => Promise<void>;
@@ -197,6 +208,9 @@ interface CellsState {
   clearOutput: (id: string) => void;
   setEnvVar: (key: string, value: string) => void;
   deleteEnvVar: (key: string) => void;
+
+  lockCell: (id: string) => Promise<boolean>;
+  unlockCell: (id: string) => Promise<void>;
 
   tryUnlockSecrets: (password: string) => Promise<boolean>;
   lockSecrets: () => void;
@@ -238,9 +252,167 @@ export function cronTargetsSecrets(cron: CronEntry, cells: Cell[]): boolean {
   return /\$secrets[\.\[]\s*['"\w]/.test(cell.script);
 }
 
+async function loadData(): Promise<void> {
+  const set = useCellsStore.setState;
+  const get = useCellsStore.getState;
+  let cells: Cell[];
+  let envData: Record<string, string>;
+  let queues: Record<string, Queue>;
+  let eventTopics: Record<string, EventTopic>;
+  let crons: CronEntry[];
+  let languages = ['javascript'];
+
+  if (isServerMode && apiClient) {
+    cells = await apiClient.list();
+    envData = await apiClient.getEnv();
+    queues = await apiClient.getQueues();
+    eventTopics = await apiClient.getTopics();
+    crons = await apiClient.getCrons();
+    languages = await apiClient.getLanguages();
+    startServerPolling();
+  } else {
+    cells = await storage.list();
+    envData = loadEnv();
+    queues = loadQueues();
+    eventTopics = loadTopics();
+    crons = loadCrons();
+
+    scheduler = new Scheduler(
+      (id) => get().cells.find(c => c.id === id),
+      (id, result: ExecutionResult) => {
+        set(state => ({
+          cells: state.cells.map(c =>
+            c.id === id
+              ? {
+                  ...c,
+                  status: result.success ? 'success' : 'error',
+                  lastRunAt: Date.now(),
+                  output: [...c.output, ...result.output].slice(-200),
+                  state: result.state,
+                  updatedAt: Date.now(),
+                }
+              : c
+          ),
+        }));
+        const updated = get().cells.find(c => c.id === id);
+        if (updated) storage.save(updated);
+      },
+      () => {
+        const state = get();
+        return {
+          env: { ...state.env },
+          secrets: secretsMaskSet(state.secrets),
+          secretsObj: { ...state.secrets },
+        };
+      },
+      (name, body) => get().enqueue(name, body),
+      (name, body) => get().emitEvent(name, body)
+    );
+
+    const running = cells.filter(c => c.enabled);
+    running.forEach(c => scheduler?.start(c.id));
+  }
+
+  const blob = loadBlob();
+
+  let unlocked = false;
+  let decrypted: Record<string, string> = {};
+
+  if (blob && loadKeepUnlocked()) {
+    const sessionPw = loadSessionPassword();
+    if (sessionPw) {
+      try {
+        const currentHash = await hashPassword(sessionPw);
+        if (currentHash === blob.hash) {
+          decrypted = await decryptSecrets(blob, sessionPw);
+          cachedSecretsPassword = sessionPw;
+          unlocked = true;
+        }
+      } catch {
+        clearSessionPassword();
+      }
+    }
+  }
+
+  if (isServerMode && apiClient) {
+    try {
+      const status = await apiClient.getSecretsStatus();
+      if (unlocked) {
+        if (!status.hasBlob) {
+          await apiClient.putSecretsBlob(blob!);
+        }
+        if (!status.unlocked) {
+          await apiClient.unlockSecrets(cachedSecretsPassword!);
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  const runningIds = cells.filter(c => c.enabled).map(c => c.id);
+
+  set({
+    cells,
+    loaded: true,
+    env: envData,
+    secretsLocked: blob !== null && !unlocked,
+    secrets: decrypted,
+    secretsBlob: blob,
+    runningIds,
+    queues,
+    eventTopics,
+    crons,
+    languages,
+  });
+
+  if (!isServerMode) {
+    setInterval(() => {
+      const state = get();
+      const now = Date.now();
+      const currentMinute = Math.floor(now / 60000);
+      for (const cron of state.crons) {
+        if (!cron.enabled) continue;
+        if (cron.lastRunAt) {
+          const lastMinute = Math.floor(cron.lastRunAt / 60000);
+          if (lastMinute >= currentMinute) continue;
+        }
+        if (!cronMatches(cron.expression, new Date(now))) continue;
+        dispatchCron(cron, state);
+        const runTs = Date.now();
+        set(s => ({
+          crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: runTs } : c),
+        }));
+        persistCrons(get().crons);
+      }
+    }, 15000);
+
+    setInterval(() => {
+      const state = get();
+      for (const q of Object.values(state.queues)) {
+        if (q.messages.length === 0) continue;
+        for (const subId of q.subscriberIds) {
+          if (state.runningIds.includes(subId)) continue;
+          const cell = state.cells.find(c => c.id === subId);
+          if (!cell) continue;
+          const msg = q.messages[0];
+          scheduler?.runOnce(subId, parseMessageBody(msg.body));
+          set(s => {
+            const queues = { ...s.queues };
+            queues[q.name] = { ...queues[q.name], messages: queues[q.name].messages.slice(1) };
+            saveQueues(queues);
+            return { queues };
+          });
+          break;
+        }
+      }
+    }, 2000);
+  }
+}
+
 export const useCellsStore = create<CellsState>()((set, get) => ({
   cells: [],
   loaded: false,
+  authenticated: false,
+  authRequired: false,
   runningIds: [],
   env: {},
   secretsLocked: false,
@@ -253,169 +425,85 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   eventTopics: {},
   crons: [],
   languages: ['javascript'],
+  clientId: globalThis.crypto?.randomUUID?.() || Math.random().toString(36).substring(2, 18),
+  editingCellId: null,
 
   init: async () => {
-    // Detect server mode
+    if (initStarted) return;
+    initStarted = true;
+
     apiClient = new ApiClient();
     try { isServerMode = await apiClient.health(); } catch { isServerMode = false; }
-    if (!isServerMode) apiClient = null;
 
-    let cells: Cell[];
-    let env: Record<string, string>;
-    let queues: Record<string, Queue>;
-    let eventTopics: Record<string, EventTopic>;
-    let crons: CronEntry[];
-    let languages = ['javascript'];
-
-    if (isServerMode && apiClient) {
-      cells = await apiClient.list();
-      env = await apiClient.getEnv();
-      queues = await apiClient.getQueues();
-      eventTopics = await apiClient.getTopics();
-      crons = await apiClient.getCrons();
-      languages = await apiClient.getLanguages();
-      startServerPolling();
-    } else {
-      cells = await storage.list();
-      env = loadEnv();
-      queues = loadQueues();
-      eventTopics = loadTopics();
-      crons = loadCrons();
-
-      scheduler = new Scheduler(
-        (id) => get().cells.find(c => c.id === id),
-        (id, result: ExecutionResult) => {
-          set(state => ({
-            cells: state.cells.map(c =>
-              c.id === id
-                ? {
-                    ...c,
-                    status: result.success ? 'success' : 'error',
-                    lastRunAt: Date.now(),
-                    output: [...c.output, ...result.output].slice(-200),
-                    state: result.state,
-                    updatedAt: Date.now(),
-                  }
-                : c
-            ),
-          }));
-          const updated = get().cells.find(c => c.id === id);
-          if (updated) storage.save(updated);
-        },
-        () => {
-          const state = get();
-          return {
-            env: { ...state.env },
-            secrets: secretsMaskSet(state.secrets),
-            secretsObj: { ...state.secrets },
-          };
-        },
-        (name, body) => get().enqueue(name, body),
-        (name, body) => get().emitEvent(name, body)
-      );
-
-      const running = cells.filter(c => c.enabled);
-      running.forEach(c => scheduler?.start(c.id));
+    if (!isServerMode) {
+      apiClient = null;
+      set({ authenticated: true, authRequired: false });
+      await loadData();
+      return;
     }
 
-    const blob = loadBlob();
-
-    let unlocked = false;
-    let decrypted: Record<string, string> = {};
-
-    // Try auto-unlock via sessionStorage if keepUnlocked is enabled
-    if (blob && loadKeepUnlocked()) {
-      const sessionPw = loadSessionPassword();
-      if (sessionPw) {
-        try {
-          const currentHash = await hashPassword(sessionPw);
-          if (currentHash === blob.hash) {
-            decrypted = await decryptSecrets(blob, sessionPw);
-            cachedSecretsPassword = sessionPw;
-            unlocked = true;
-          }
-        } catch {
-          clearSessionPassword();
-        }
-      }
-    }
-
-    // In server mode, sync unlock state to server
-    if (isServerMode && apiClient) {
-      try {
-        const status = await apiClient.getSecretsStatus();
-        if (unlocked) {
-          if (!status.hasBlob) {
-            await apiClient.putSecretsBlob(blob!);
-          }
-          if (!status.unlocked) {
-            await apiClient.unlockSecrets(cachedSecretsPassword!);
-          }
-        }
-      } catch { /* ignore */ }
-    }
-
-    const runningIds = isServerMode
-      ? cells.filter(c => c.enabled).map(c => c.id)
-      : cells.filter(c => c.enabled).map(c => c.id);
-
-    set({
-      cells,
-      loaded: true,
-      env,
-      secretsLocked: blob !== null && !unlocked,
-      secrets: decrypted,
-      secretsBlob: blob,
-      runningIds,
-      queues,
-      eventTopics,
-      crons,
-      languages,
+    apiClient!.setOnAuthError(() => {
+      set({ authenticated: false });
     });
 
-    // Cron polling — browser only; server handles its own cron scheduler
-    if (!isServerMode) {
-      setInterval(() => {
-        const state = get();
-        const now = Date.now();
-        const currentMinute = Math.floor(now / 60000);
-        for (const cron of state.crons) {
-          if (!cron.enabled) continue;
-          if (cron.lastRunAt) {
-            const lastMinute = Math.floor(cron.lastRunAt / 60000);
-            if (lastMinute >= currentMinute) continue;
-          }
-          if (!cronMatches(cron.expression, new Date(now))) continue;
-          dispatchCron(cron, state);
-          const runTs = Date.now();
-          set(s => ({
-            crons: s.crons.map(c => c.name === cron.name ? { ...c, lastRunAt: runTs } : c),
-          }));
-          persistCrons(get().crons);
-        }
-      }, 15000);
-
-      setInterval(() => {
-        const state = get();
-        for (const q of Object.values(state.queues)) {
-          if (q.messages.length === 0) continue;
-          for (const subId of q.subscriberIds) {
-            if (state.runningIds.includes(subId)) continue;
-            const cell = state.cells.find(c => c.id === subId);
-            if (!cell) continue;
-            const msg = q.messages[0];
-            scheduler?.runOnce(subId, parseMessageBody(msg.body));
-            set(s => {
-              const queues = { ...s.queues };
-              queues[q.name] = { ...queues[q.name], messages: queues[q.name].messages.slice(1) };
-              saveQueues(queues);
-              return { queues };
-            });
-            break;
-          }
-        }
-      }, 2000);
+    let authEnabled = false;
+    try {
+      const authStatus = await apiClient!.getAuthStatus();
+      authEnabled = authStatus.authEnabled;
+    } catch {
+      authEnabled = false;
     }
+
+    if (authEnabled) {
+      const cookieAuth = await apiClient!.verifyAuth();
+      if (cookieAuth) {
+        set({ authRequired: true, authenticated: true, loaded: false });
+        await loadData();
+        return;
+      }
+
+      set({ authRequired: true, authenticated: false, loaded: true });
+      return;
+    }
+
+    set({ authRequired: false, authenticated: true });
+    await loadData();
+  },
+
+  login: async (password: string) => {
+    if (!apiClient) return false;
+    try {
+      const { token } = await apiClient.login(password);
+      apiClient.setToken(token);
+      set({ authenticated: true, loaded: false });
+      await loadData();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  logout: async () => {
+    if (apiClient) {
+      try { await apiClient.logout(); } catch { /* ignore */ }
+      apiClient.setToken(null);
+    }
+    set({
+      authenticated: false,
+      loaded: false,
+      cells: [],
+      runningIds: [],
+      env: {},
+      secrets: {},
+      secretsBlob: null,
+      secretsLocked: false,
+      queues: {},
+      eventTopics: {},
+      crons: [],
+    });
+    stopServerPolling();
+    initStarted = false;
+    await get().init();
   },
 
   addCell: async () => {
@@ -447,6 +535,7 @@ console.log("Run count:", $state.counter);
       language: defaultLang as 'javascript' | 'python',
       script: defaultScript,
       intervalMs: 10000,
+      timeoutMs: null,
       enabled: false,
       lastRunAt: null,
       status: 'idle',
@@ -462,6 +551,14 @@ console.log("Run count:", $state.counter);
   },
 
   updateCell: async (id, updates) => {
+    const state = get();
+    const existing = state.cells.find(c => c.id === id);
+    // If cell is locked by another client, reject updates to script/name/params
+    if (existing?.lockedBy && existing.lockedBy !== state.clientId) {
+      if ('script' in updates || 'name' in updates || 'params' in updates) return;
+      // Allow non-content updates (like intervalMs) through
+    }
+
     set(state => ({
       cells: state.cells.map(c =>
         c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c
@@ -470,7 +567,9 @@ console.log("Run count:", $state.counter);
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
       if (isServerMode && apiClient) {
-        await apiClient.save(cell);
+        try {
+          await apiClient.save(cell);
+        } catch { /* ignore server rejection (e.g. locked by other) */ }
       } else {
         await storage.save(cell);
         if (updates.intervalMs !== undefined && scheduler?.isRunning(id)) {
@@ -609,6 +708,40 @@ console.log("Run count:", $state.counter);
       if (isServerMode && apiClient) apiClient.save(cell);
       else storage.save(cell);
     }
+  },
+
+  lockCell: async (id) => {
+    const state = get();
+    if (!isServerMode || !apiClient) {
+      set({ editingCellId: id });
+      return true;
+    }
+
+    if (state.editingCellId && state.editingCellId !== id) {
+      await state.unlockCell(state.editingCellId);
+    }
+
+    try {
+      const result = await apiClient.lockCell(id, state.clientId);
+      if (result.ok) {
+        set({ editingCellId: id });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  unlockCell: async (id) => {
+    if (!isServerMode || !apiClient) {
+      set(s => s.editingCellId === id ? { editingCellId: null } : {});
+      return;
+    }
+    try {
+      await apiClient.unlockCell(id, get().clientId);
+    } catch { /* ignore */ }
+    set(s => s.editingCellId === id ? { editingCellId: null } : {});
   },
 
   setEnvVar: (key, value) => {
@@ -830,7 +963,7 @@ console.log("Run count:", $state.counter);
     set(state => {
       const queue = state.queues[name];
       if (!queue) return state;
-      const msg: QueueMessage = { id: crypto.randomUUID(), body, timestamp: Date.now(), retries: 0 };
+      const msg: QueueMessage = { id: generateId(), body, timestamp: Date.now(), retries: 0 };
       const queues = { ...state.queues, [name]: { ...queue, messages: [...queue.messages, msg] } };
       persistQueues(queues);
       return { queues };

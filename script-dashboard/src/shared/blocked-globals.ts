@@ -1,6 +1,7 @@
 export const BROWSER_BLOCKED_GLOBALS: Record<string, unknown> = {
   setInterval: undefined,
   clearInterval: undefined,
+  eval: undefined,
   window: undefined,
   self: undefined,
   globalThis: undefined,
@@ -21,6 +22,7 @@ export const BROWSER_BLOCKED_GLOBALS: Record<string, unknown> = {
 export const SERVER_BLOCKED_GLOBALS: Record<string, unknown> = {
   setInterval: undefined,
   clearInterval: undefined,
+  eval: undefined,
   globalThis: undefined,
   global: undefined,
   window: undefined,

@@ -1,6 +1,7 @@
 export const BROWSER_BLOCKED_GLOBALS = {
     setInterval: undefined,
     clearInterval: undefined,
+    eval: undefined,
     window: undefined,
     self: undefined,
     globalThis: undefined,
@@ -20,6 +21,7 @@ export const BROWSER_BLOCKED_GLOBALS = {
 export const SERVER_BLOCKED_GLOBALS = {
     setInterval: undefined,
     clearInterval: undefined,
+    eval: undefined,
     globalThis: undefined,
     global: undefined,
     window: undefined,

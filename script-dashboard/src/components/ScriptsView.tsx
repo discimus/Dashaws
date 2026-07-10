@@ -24,17 +24,17 @@ export function ScriptsView({ focusCellId, onFocusHandled, onNavigateHelp }: Pro
   if (cells.length === 0) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-400 mb-4">No scripts configured yet.</p>
+        <p className="text-on-surface-variant mb-4">No scripts configured yet.</p>
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={onNavigateHelp}
-            className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white font-semibold text-sm transition-colors"
+            className="md-btn md-btn-tonal px-4 py-2 text-base"
           >
             ? Help
           </button>
           <button
             onClick={addCell}
-            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors"
+            className="md-btn md-btn-filled px-4 py-2 text-base"
           >
             + Add Script
           </button>
@@ -45,21 +45,21 @@ export function ScriptsView({ focusCellId, onFocusHandled, onNavigateHelp }: Pro
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between sticky top-0 z-10 bg-gray-800 pt-3 pb-3">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="flex items-center justify-between sticky top-0 z-10 bg-surface pt-3 pb-3">
+        <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">
           Scripts {selectedIds.length > 0 ? `(${selectedIds.length}/${cells.length})` : `(${cells.length})`}
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={onNavigateHelp}
-            className="px-3 py-1.5 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
+            className="md-btn md-btn-tonal px-3 py-1.5 text-sm"
             title="Open script reference documentation"
           >
             ? Help
           </button>
           <button
             onClick={addCell}
-            className="px-3 py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            className="md-btn md-btn-filled px-3 py-1.5 text-sm"
           >
             + Add Script
           </button>

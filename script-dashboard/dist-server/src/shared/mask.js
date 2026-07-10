@@ -1,4 +1,4 @@
-export function maskValue(val, secrets) {
+export function maskValue(val, secrets, seen = new WeakSet()) {
     if (typeof val === 'string') {
         let result = val;
         for (const secret of secrets) {
@@ -11,12 +11,18 @@ export function maskValue(val, secrets) {
         return result;
     }
     if (Array.isArray(val)) {
-        return val.map(v => maskValue(v, secrets));
+        if (seen.has(val))
+            return '[Circular]';
+        seen.add(val);
+        return val.map(v => maskValue(v, secrets, seen));
     }
     if (val !== null && typeof val === 'object') {
+        if (seen.has(val))
+            return '[Circular]';
+        seen.add(val);
         const masked = {};
         for (const [k, v] of Object.entries(val)) {
-            masked[k] = maskValue(v, secrets);
+            masked[k] = maskValue(v, secrets, seen);
         }
         return masked;
     }

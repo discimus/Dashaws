@@ -1,6 +1,7 @@
-"""Server state management — in-memory data + file persistence."""
+"""Server state management — in-memory data + file persistence (async I/O)."""
 import os
 import json
+import asyncio
 import re
 import time
 from typing import Dict, Any, List, Optional
@@ -8,9 +9,12 @@ from pathlib import Path
 
 from storage.file_storage import FileStorageBackend
 from sandbox.scheduler import ServerScheduler
-from crypto.secrets import encrypt_secrets, decrypt_secrets, hash_password
+from crypto.secrets import decrypt_secrets
 from utils.parse import parse_message_body
 
+
+auth_enabled = {"value": False}
+valid_tokens: set = set()
 
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
@@ -28,10 +32,23 @@ cells: List[dict] = []
 scheduler: Optional[ServerScheduler] = None
 auto_disabled_cron_names: set = set()
 
+def _log_task_error(task: asyncio.Task, cell_id: str):
+    try:
+        exc = task.exception()
+        if exc:
+            print("[scheduler] Unhandled error in task for cell {}: {}".format(cell_id, exc), flush=True)
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        pass
+
 server_languages: List[str] = ["python"]
 
+# Debounce state for persist_state
+_persist_task = None
 
-def _load_json(filename: str) -> dict:
+
+def _load_json_sync(filename: str) -> dict:
     path = os.path.join(DATA_DIR, filename)
     try:
         if os.path.exists(path):
@@ -42,34 +59,96 @@ def _load_json(filename: str) -> dict:
     return {}
 
 
-def _save_json(filename: str, data):
+def _save_json_sync(filename: str, data):
+    path = os.path.join(DATA_DIR, filename)
+    tmp_path = path + ".tmp"
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, separators=(",", ":"), ensure_ascii=False)
+    os.replace(tmp_path, path)
+
+
+async def _load_json(filename: str) -> dict:
+    path = os.path.join(DATA_DIR, filename)
+    try:
+        if os.path.exists(path):
+            return await asyncio.to_thread(_load_json_sync, filename)
+    except (json.JSONDecodeError, IOError):
+        pass
+    return {}
+
+
+async def _save_json(filename: str, data):
     path = os.path.join(DATA_DIR, filename)
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    await asyncio.to_thread(_save_json_sync, filename, data)
 
 
-def init_state():
+async def init_state():
     global server_env, server_secrets_blob, server_queues, server_event_topics, server_crons
 
-    server_env = _load_json("env.json")
-    server_secrets_blob = _load_json("secrets.enc.json") or None
-    server_queues = _load_json("queues.json")
+    server_env = await _load_json("env.json")
+    server_secrets_blob = await _load_json("secrets.enc.json") or None
+    server_queues = await _load_json("queues.json")
 
-    crons_data = _load_json("crons.json")
+    crons_data = await _load_json("crons.json")
     server_crons = crons_data if isinstance(crons_data, list) else []
 
-    topics_data = _load_json("topics.json")
+    topics_data = await _load_json("topics.json")
     server_event_topics = topics_data if isinstance(topics_data, dict) else {}
 
 
 def persist_state():
-    _save_json("env.json", server_env)
+    """Schedule a debounced persist. Multiple rapid calls coalesce into one write."""
+    global _persist_task
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running event loop — write synchronously (startup / testing)
+        _save_json_sync("env.json", server_env)
+        if server_secrets_blob:
+            _save_json_sync("secrets.enc.json", server_secrets_blob)
+        _save_json_sync("queues.json", server_queues)
+        _save_json_sync("topics.json", server_event_topics)
+        _save_json_sync("crons.json", server_crons)
+        return
+
+    if _persist_task and not _persist_task.done():
+        return  # already scheduled
+
+    _persist_task = loop.create_task(_persist_debounced())
+
+
+async def _persist_debounced():
+    await asyncio.sleep(0.5)  # 500ms coalesce window
+    global _persist_task
+    _persist_task = None
+    await _save_json("env.json", server_env)
     if server_secrets_blob:
-        _save_json("secrets.enc.json", server_secrets_blob)
-    _save_json("queues.json", server_queues)
-    _save_json("topics.json", server_event_topics)
-    _save_json("crons.json", server_crons)
+        await _save_json("secrets.enc.json", server_secrets_blob)
+    await _save_json("queues.json", server_queues)
+    await _save_json("topics.json", server_event_topics)
+    await _save_json("crons.json", server_crons)
+
+
+async def flush_all():
+    """Flush all pending writes (storage + metadata)."""
+    await storage.flush()
+    global _persist_task
+    if _persist_task and not _persist_task.done():
+        _persist_task.cancel()
+        try:
+            await _persist_task
+        except asyncio.CancelledError:
+            pass
+        _persist_task = None
+    # Write metadata immediately
+    await _save_json("env.json", server_env)
+    if server_secrets_blob:
+        await _save_json("secrets.enc.json", server_secrets_blob)
+    await _save_json("queues.json", server_queues)
+    await _save_json("topics.json", server_event_topics)
+    await _save_json("crons.json", server_crons)
 
 
 async def sync_cell(cell: dict):
@@ -177,7 +256,7 @@ def clear_secrets_all():
 async def init_server():
     global cells, scheduler
 
-    init_state()
+    await init_state()
     cells = await storage.list()
     # Migrate legacy cells
     for cell in cells:
@@ -224,8 +303,8 @@ async def init_server():
         for cell_id in topic.get("subscriberIds", []):
             cell = get_cell(cell_id)
             if cell:
-                asyncio = __import__("asyncio")
-                asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
+                task = asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
+                task.add_done_callback(lambda t, cid=cell_id: _log_task_error(t, cid))
 
     scheduler = ServerScheduler(
         get_cell=get_cell,
