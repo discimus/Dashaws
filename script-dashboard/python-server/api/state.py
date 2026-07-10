@@ -4,7 +4,6 @@ import json
 import asyncio
 import re
 import time
-from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from storage.file_storage import FileStorageBackend
@@ -13,39 +12,41 @@ from crypto.secrets import decrypt_secrets
 from utils.parse import parse_message_body
 
 
-auth_enabled = {"value": False}
-valid_tokens: set = set()
+auth_enabled: dict[str, bool] = {"value": False}
+valid_tokens: set[str] = set()
 
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 storage = FileStorageBackend()
 
-server_env: Dict[str, str] = {}
-server_secrets_blob: Optional[dict] = None
-server_secrets: Dict[str, str] = {}
-server_secrets_password: Optional[str] = None
-server_queues: Dict[str, dict] = {}
-server_event_topics: Dict[str, dict] = {}
-server_crons: List[dict] = []
-cells: List[dict] = []
-scheduler: Optional[ServerScheduler] = None
-auto_disabled_cron_names: set = set()
+server_env: dict[str, str] = {}
+server_secrets_blob: dict | None = None
+server_secrets: dict[str, str] = {}
+server_secrets_password: str | None = None
+server_queues: dict[str, dict] = {}
+server_event_topics: dict[str, dict] = {}
+server_crons: list[dict] = []
+cells: list[dict] = []
+scheduler: ServerScheduler | None = None
+auto_disabled_cron_names: set[str] = set()
+
 
 def _log_task_error(task: asyncio.Task, cell_id: str):
     try:
         exc = task.exception()
         if exc:
-            print("[scheduler] Unhandled error in task for cell {}: {}".format(cell_id, exc), flush=True)
+            print(f"[scheduler] Unhandled error in task for cell {cell_id}: {exc}", flush=True)
     except asyncio.CancelledError:
         pass
     except Exception:
         pass
 
-server_languages: List[str] = ["python"]
+
+server_languages: list[str] = ["python"]
 
 # Debounce state for persist_state
-_persist_task = None
+_persist_task: asyncio.Task | None = None
 
 
 def _load_json_sync(filename: str) -> dict:
@@ -59,7 +60,7 @@ def _load_json_sync(filename: str) -> dict:
     return {}
 
 
-def _save_json_sync(filename: str, data):
+def _save_json_sync(filename: str, data) -> None:
     path = os.path.join(DATA_DIR, filename)
     tmp_path = path + ".tmp"
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
@@ -69,22 +70,20 @@ def _save_json_sync(filename: str, data):
 
 
 async def _load_json(filename: str) -> dict:
-    path = os.path.join(DATA_DIR, filename)
     try:
-        if os.path.exists(path):
+        if os.path.exists(os.path.join(DATA_DIR, filename)):
             return await asyncio.to_thread(_load_json_sync, filename)
     except (json.JSONDecodeError, IOError):
         pass
     return {}
 
 
-async def _save_json(filename: str, data):
-    path = os.path.join(DATA_DIR, filename)
+async def _save_json(filename: str, data) -> None:
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
     await asyncio.to_thread(_save_json_sync, filename, data)
 
 
-async def init_state():
+async def init_state() -> None:
     global server_env, server_secrets_blob, server_queues, server_event_topics, server_crons
 
     server_env = await _load_json("env.json")
@@ -98,7 +97,7 @@ async def init_state():
     server_event_topics = topics_data if isinstance(topics_data, dict) else {}
 
 
-def persist_state():
+def persist_state() -> None:
     """Schedule a debounced persist. Multiple rapid calls coalesce into one write."""
     global _persist_task
     try:
@@ -119,7 +118,7 @@ def persist_state():
     _persist_task = loop.create_task(_persist_debounced())
 
 
-async def _persist_debounced():
+async def _persist_debounced() -> None:
     await asyncio.sleep(0.5)  # 500ms coalesce window
     global _persist_task
     _persist_task = None
@@ -131,7 +130,7 @@ async def _persist_debounced():
     await _save_json("crons.json", server_crons)
 
 
-async def flush_all():
+async def flush_all() -> None:
     """Flush all pending writes (storage + metadata)."""
     await storage.flush()
     global _persist_task
@@ -151,7 +150,7 @@ async def flush_all():
     await _save_json("crons.json", server_crons)
 
 
-async def sync_cell(cell: dict):
+async def sync_cell(cell: dict) -> None:
     await storage.save(cell)
     global cells
     idx = None
@@ -171,7 +170,7 @@ async def sync_cell(cell: dict):
             await scheduler.start(cell["id"])
 
 
-async def remove_cell(id: str):
+async def remove_cell(id: str) -> None:
     await storage.delete(id)
     global cells
     if scheduler:
@@ -183,13 +182,13 @@ def cell_uses_secrets(script: str) -> bool:
     return bool(re.search(r'\$secrets[\.\[]\s*[\'"\w]', script) or re.search(r'secrets[\.\[]\s*[\'"\w]', script))
 
 
-def auto_disable_secret_crons():
+def auto_disable_secret_crons() -> None:
     global auto_disabled_cron_names
-    secret_names = set()
+    secret_names: set[str] = set()
     for cell in cells:
         if cell_uses_secrets(cell.get("script", "")):
-            secret_names.add(cell.get("id"))
-            secret_names.add(cell.get("name"))
+            secret_names.add(cell.get("id", ""))
+            secret_names.add(cell.get("name", ""))
     for cron in server_crons:
         if cron.get("target", {}).get("type") != "cell":
             continue
@@ -199,7 +198,7 @@ def auto_disable_secret_crons():
     persist_state()
 
 
-def re_enable_auto_disabled_crons():
+def re_enable_auto_disabled_crons() -> None:
     global auto_disabled_cron_names
     for cron in server_crons:
         if cron.get("name") in auto_disabled_cron_names:
@@ -221,14 +220,14 @@ async def unlock_secrets(password: str) -> bool:
         return False
 
 
-def lock_secrets():
+def lock_secrets() -> None:
     global server_secrets, server_secrets_password
     server_secrets = {}
     server_secrets_password = None
     auto_disable_secret_crons()
 
 
-async def set_secrets_blob(blob: dict):
+async def set_secrets_blob(blob: dict) -> None:
     global server_secrets_blob, server_secrets
     server_secrets_blob = blob
     persist_state()
@@ -239,7 +238,7 @@ async def set_secrets_blob(blob: dict):
             pass
 
 
-def clear_secrets_all():
+def clear_secrets_all() -> None:
     global server_secrets_blob, server_secrets, server_secrets_password, auto_disabled_cron_names
     server_secrets_blob = None
     server_secrets = {}
@@ -253,7 +252,7 @@ def clear_secrets_all():
         pass
 
 
-async def init_server():
+async def init_server() -> None:
     global cells, scheduler
 
     await init_state()
@@ -264,15 +263,15 @@ async def init_server():
             cell["language"] = "python"
 
     PORT = int(os.environ.get("PORT", "3456"))
-    api_base = os.environ.get("DASHAWS_API_BASE", "http://localhost:{}/api".format(PORT))
+    api_base = os.environ.get("DASHAWS_API_BASE", f"http://localhost:{PORT}/api")
 
-    def get_cell(id: str):
+    def get_cell(id: str) -> dict | None:
         for c in cells:
             if c.get("id") == id:
                 return c
         return None
 
-    async def on_result(id: str, result: dict):
+    async def on_result(id: str, result: dict) -> None:
         for cell in cells:
             if cell.get("id") == id:
                 cell["status"] = "success" if result.get("success") else "error"
@@ -282,27 +281,27 @@ async def init_server():
                 await storage.save(cell)
                 break
 
-    def get_env():
+    def get_env() -> dict:
         return {
             "env": {**server_env},
             "secrets": set(server_secrets.values()),
             "secretsObj": {**server_secrets},
         }
 
-    def get_data():
+    def get_data() -> dict:
         return {
             "queues": server_queues,
             "eventTopics": server_event_topics,
             "crons": server_crons,
         }
 
-    def on_emit(name: str, body: str):
+    def on_emit(name: str, body: str) -> None:
         topic = server_event_topics.get(name)
         if not topic:
             return
         for cell_id in topic.get("subscriberIds", []):
             cell = get_cell(cell_id)
-            if cell:
+            if cell and scheduler:
                 task = asyncio.create_task(scheduler.run_once(cell_id, parse_message_body(body)))
                 task.add_done_callback(lambda t, cid=cell_id: _log_task_error(t, cid))
 

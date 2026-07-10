@@ -3,6 +3,7 @@ import os
 import json
 import secrets
 import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Body
@@ -22,7 +23,7 @@ _config_paths = [
     os.path.join(os.getcwd(), "dashaws.config.json"),
     os.path.join(os.getcwd(), "..", "dashaws.config.json"),
 ]
-_server_password = None
+_server_password: str | None = None
 
 for _p in _config_paths:
     try:
@@ -40,9 +41,7 @@ for _p in _config_paths:
 if not _server_password:
     print("[auth] No password configured — authentication disabled")
 
-_failed_attempts: dict = {}
-
-import asyncio
+_failed_attempts: dict[str, dict] = {}
 
 
 def _get_client_ip(request: Request) -> str:
@@ -126,13 +125,8 @@ async def lifespan(app: FastAPI):
     await init_server()
 
     PORT = int(os.environ.get("PORT", "3456"))
-    print("Server running at http://localhost:{}".format(PORT))
-    print("Cells: {}, Queues: {}, Topics: {}, Crons: {}".format(
-        len(cells),
-        len(server_queues),
-        len(server_event_topics),
-        len(server_crons),
-    ))
+    print(f"Server running at http://localhost:{PORT}")
+    print(f"Cells: {len(cells)}, Queues: {len(server_queues)}, Topics: {len(server_event_topics)}, Crons: {len(server_crons)}")
 
     cleanup_task = asyncio.create_task(_cleanup_old_attempts())
 
@@ -176,7 +170,7 @@ async def auth_middleware(request: Request, call_next):
 
 
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"

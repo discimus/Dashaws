@@ -6,13 +6,12 @@ import uuid as _uuid
 import urllib.request
 import urllib.error
 import urllib.parse
-from typing import Dict, Any, List, Set
 
 # Import common libraries available to user scripts
 import requests
 
 # Modules blocked from import — operating-system-level access
-_BLOCKED_MODULES: Set[str] = {
+_BLOCKED_MODULES: set[str] = {
     "os", "subprocess", "sys", "shutil", "socket", "ctypes",
     "multiprocessing", "pty", "signal", "threading", "asyncio",
     "concurrent.futures", "gc", "faulthandler", "traceback",
@@ -31,7 +30,7 @@ def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
     """Restricted __import__ that blocks OS-level access modules."""
     root = name.partition(".")[0]
     if root in _BLOCKED_MODULES:
-        raise ImportError("Module '{}' is not available in the sandbox".format(name))
+        raise ImportError(f"Module '{name}' is not available in the sandbox")
     return __import__(name, globals, locals, fromlist, level)
 
 
@@ -50,10 +49,10 @@ def _safe_open(file, mode="r", *args, **kwargs):
     if any(resolved.startswith(d + _os.sep) or resolved == d for d in allowed_dirs):
         return _builtins.open(file, mode, *args, **kwargs)
 
-    raise PermissionError("File access outside data/tmp directories is not allowed: {}".format(file))
+    raise PermissionError(f"File access outside data/tmp directories is not allowed: {file}")
 
 
-def _build_safe_builtins(secrets_set: Set[str]) -> dict:
+def _build_safe_builtins(secrets_set: set[str]) -> dict:
     """Build a safe subset of builtins with restricted __import__ and open."""
     safe: dict = {}
 
@@ -111,15 +110,15 @@ def _build_safe_builtins(secrets_set: Set[str]) -> dict:
 
 
 def create_sandbox_globals(
-    cell_state: Dict[str, Any],
-    env: Dict[str, str],
-    secrets_obj: Dict[str, str],
-    props: Dict[str, Any],
+    cell_state: dict[str, object],
+    env: dict[str, str],
+    secrets_obj: dict[str, str],
+    props: dict[str, object],
     api_base: str,
 ):
     """Create globals dict for exec() that provides safe builtins, state, props, env, etc."""
 
-    output: List[dict] = []
+    output: list[dict] = []
     secrets_set = set(v for v in (secrets_obj or {}).values() if v)
 
     def _mask_args(args):
@@ -225,7 +224,7 @@ class _Queue:
             )
             urllib.request.urlopen(req, timeout=5)
         except Exception as e:
-            self._log("warn", ["queue.enqueue failed: {}".format(str(e))])
+            self._log("warn", [f"queue.enqueue failed: {e}"])
 
 
 class _PubSub:
@@ -244,4 +243,4 @@ class _PubSub:
             )
             urllib.request.urlopen(req, timeout=5)
         except Exception as e:
-            self._log("warn", ["pubsub.emit failed: {}".format(str(e))])
+            self._log("warn", [f"pubsub.emit failed: {e}"])

@@ -1,8 +1,8 @@
 """Script executor using exec() for sandboxed code execution."""
 import asyncio
 import re
+import time
 import traceback
-from typing import Dict, Any, List
 
 from sandbox.globals import create_sandbox_globals
 from utils.mask import mask_state
@@ -10,7 +10,7 @@ from utils.mask import mask_state
 
 _JS_COMMENT_RE = re.compile(r'^\s*//', re.MULTILINE)
 
-_JS_PATTERNS = [
+_JS_PATTERNS: list[tuple[re.Pattern | str, str]] = [
     (_JS_COMMENT_RE, "// comment → use # for Python comments"),
     (r'===', "=== (JS strict equality) → use == in Python"),
     (r'!==', "!== (JS strict inequality) → use != in Python"),
@@ -21,9 +21,9 @@ _JS_PATTERNS = [
 ]
 
 
-def _check_js_patterns(script: str, output: list):
+def _check_js_patterns(script: str, output: list[dict]) -> None:
     """Scan for common JavaScript syntax in Python scripts and emit warnings."""
-    seen = set()
+    seen: set[str] = set()
     for pattern, hint in _JS_PATTERNS:
         if isinstance(pattern, re.Pattern):
             match = pattern.search(script)
@@ -31,19 +31,19 @@ def _check_js_patterns(script: str, output: list):
             match = re.search(pattern, script)
         if match and hint not in seen:
             output.append({
-                "timestamp": int(__import__("time").time() * 1000),
+                "timestamp": int(time.time() * 1000),
                 "type": "warn",
-                "args": ["JS syntax detected: {}".format(hint)],
+                "args": [f"JS syntax detected: {hint}"],
             })
             seen.add(hint)
 
 
 async def execute_script(
     script: str,
-    cell_state: Dict[str, Any],
-    env: Dict[str, str],
-    secrets_obj: Dict[str, str],
-    props: Dict[str, Any],
+    cell_state: dict[str, object],
+    env: dict[str, str],
+    secrets_obj: dict[str, str],
+    props: dict[str, object],
     api_base: str,
     timeout: float = 0.0,
 ) -> dict:
@@ -68,18 +68,18 @@ async def execute_script(
             )
         except asyncio.TimeoutError:
             success = False
-            error = "Timed out after {}s".format(timeout)
+            error = f"Timed out after {timeout}s"
             output.append({
-                "timestamp": int(__import__("time").time() * 1000),
+                "timestamp": int(time.time() * 1000),
                 "type": "error",
-                "args": ["Script timed out after {}s".format(timeout)],
+                "args": [f"Script timed out after {timeout}s"],
             })
         except Exception as e:
             success = False
             tb = traceback.format_exc()
-            error = "{}: {}".format(type(e).__name__, str(e))
+            error = f"{type(e).__name__}: {e}"
             output.append({
-                "timestamp": int(__import__("time").time() * 1000),
+                "timestamp": int(time.time() * 1000),
                 "type": "error",
                 "args": [tb],
             })
@@ -90,9 +90,9 @@ async def execute_script(
         except Exception as e:
             success = False
             tb = traceback.format_exc()
-            error = "{}: {}".format(type(e).__name__, str(e))
+            error = f"{type(e).__name__}: {e}"
             output.append({
-                "timestamp": int(__import__("time").time() * 1000),
+                "timestamp": int(time.time() * 1000),
                 "type": "error",
                 "args": [tb],
             })

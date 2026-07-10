@@ -41,18 +41,41 @@ function Check-FrontendBuild {
     Write-Host "[preflight] Frontend build complete."
 }
 
+function Check-PythonVersion {
+    $verOutput = & $script:venvPython --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to get Python version from $script:venvPython"
+        exit 1
+    }
+    $versionMatch = $verOutput -match "(\d+\.\d+\.\d+)"
+    if (-not $versionMatch) {
+        Write-Error "Could not parse Python version from: $verOutput"
+        exit 1
+    }
+    $versionStr = $matches[1]
+    $required = [version]"3.12.3"
+    $current = [version]$versionStr
+    if ($current -lt $required) {
+        Write-Error "Python 3.12.3 or higher required. Found: $versionStr"
+        exit 1
+    }
+    Write-Host "[preflight] Python $versionStr OK."
+}
+
 function Check-PythonDeps {
     Set-Location $projectDir
 
     # Create venv if it doesn't exist
     if (-not (Test-Path $script:venvDir)) {
         Write-Host "[preflight] Creating Python virtual environment..."
-        python3 -m venv $script:venvDir
+        python -m venv $script:venvDir --clear
         if (-not (Test-Path $script:venvPython)) {
             Write-Error "Failed to create virtual environment at $script:venvDir"
             exit 1
         }
     }
+
+    Check-PythonVersion
 
     $check = @"
 import fastapi, uvicorn

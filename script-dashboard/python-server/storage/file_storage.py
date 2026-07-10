@@ -3,18 +3,17 @@ import os
 import json
 import asyncio
 import time
-from typing import List, Optional
 
 
 DATA_DIR = os.environ.get("DASHAWS_DATA_DIR", os.path.join(os.getcwd(), "data-python"))
 CELLS_FILE = os.path.join(DATA_DIR, "cells.json")
 
 
-def _ensure_dir():
+def _ensure_dir() -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
 
 
-def _read_cells_sync() -> List[dict]:
+def _read_cells_sync() -> list[dict]:
     try:
         if not os.path.exists(CELLS_FILE):
             return []
@@ -28,7 +27,7 @@ def _read_cells_sync() -> List[dict]:
         return []
 
 
-def _write_cells_sync(cells: List[dict]):
+def _write_cells_sync(cells: list[dict]) -> None:
     _ensure_dir()
     tmp_path = CELLS_FILE + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
@@ -36,26 +35,26 @@ def _write_cells_sync(cells: List[dict]):
     os.replace(tmp_path, CELLS_FILE)
 
 
-async def _read_cells() -> List[dict]:
+async def _read_cells() -> list[dict]:
     return await asyncio.to_thread(_read_cells_sync)
 
 
-def _migrate_cell(cell: dict):
+def _migrate_cell(cell: dict) -> None:
     if cell and "language" not in cell:
         cell["language"] = "python"
 
 
-async def _write_cells(cells: List[dict]):
+async def _write_cells(cells: list[dict]) -> None:
     await asyncio.to_thread(_write_cells_sync, cells)
 
 
 class FileStorageBackend:
     def __init__(self):
-        self._pending = {}        # cell_id -> cell (None marks deletion)
-        self._flush_task = None
+        self._pending: dict[str, dict | None] = {}  # cell_id -> cell (None marks deletion)
+        self._flush_task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
 
-    async def list(self) -> List[dict]:
+    async def list(self) -> list[dict]:
         cells = await _read_cells()
         pending = dict(self._pending)
         for cell_id, cell in pending.items():
@@ -65,7 +64,7 @@ class FileStorageBackend:
                 cells.append(cell)
         return cells
 
-    async def get(self, id: str) -> Optional[dict]:
+    async def get(self, id: str) -> dict | None:
         if id in self._pending:
             cell = self._pending[id]
             if cell is not None:
@@ -77,16 +76,16 @@ class FileStorageBackend:
                 return c
         return None
 
-    async def save(self, cell: dict):
+    async def save(self, cell: dict) -> None:
         cell["updatedAt"] = int(time.time() * 1000)
         self._pending[cell.get("id")] = cell
         self._schedule_flush()
 
-    async def delete(self, id: str):
+    async def delete(self, id: str) -> None:
         self._pending[id] = None
         self._schedule_flush()
 
-    def _schedule_flush(self):
+    def _schedule_flush(self) -> None:
         if self._flush_task and not self._flush_task.done():
             return  # already scheduled
         try:
@@ -95,11 +94,11 @@ class FileStorageBackend:
             loop = asyncio.get_event_loop()
         self._flush_task = loop.create_task(self._debounced_flush())
 
-    async def _debounced_flush(self):
+    async def _debounced_flush(self) -> None:
         await asyncio.sleep(0.3)  # 300ms coalesce window
         await self.flush()
 
-    async def flush(self):
+    async def flush(self) -> None:
         async with self._lock:
             if not self._pending:
                 return
