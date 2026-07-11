@@ -6,9 +6,6 @@ interface Props {
   cell: Cell;
 }
 
-const MAX_CHARS_COLLAPSED = 300;
-const MAX_LINES_COLLAPSED = 3;
-
 export function CellOutput({ cell }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -85,21 +82,6 @@ export function CellOutput({ cell }: Props) {
     return String(val);
   };
 
-  const isLongContent = (text: string): boolean => {
-    return text.length > MAX_CHARS_COLLAPSED || (text.match(/\n/g) || []).length > MAX_LINES_COLLAPSED;
-  };
-
-  const truncateText = (text: string): string => {
-    const lines = text.split('\n');
-    if (lines.length > MAX_LINES_COLLAPSED) {
-      return lines.slice(0, MAX_LINES_COLLAPSED).join('\n') + '\n...';
-    }
-    if (text.length > MAX_CHARS_COLLAPSED) {
-      return text.slice(0, MAX_CHARS_COLLAPSED) + '...';
-    }
-    return text;
-  };
-
   const toggleExpand = (index: number) => {
     setExpandedEntries(prev => {
       const next = new Set(prev);
@@ -129,21 +111,26 @@ export function CellOutput({ cell }: Props) {
         ) : (
           cell.output.map((entry, i) => {
             const fullText = entry.args.map(formatValue).join(' ');
-            const long = isLongContent(fullText);
             const expanded = expandedEntries.has(i);
-            const displayText = long && !expanded ? truncateText(fullText) : fullText;
 
             return (
-              <div key={i} className={`${getColor(entry.type)} group py-0.5 border-b border-outline-variant/40`}>
+              <div
+                key={i}
+                onClick={() => toggleExpand(i)}
+                className={`${getColor(entry.type)} group cursor-pointer py-0.5 px-1 border-b border-outline-variant/40 hover:bg-on-surface/4 transition-colors`}
+              >
                 <div className="flex items-start gap-1">
                   <span className="text-on-surface-variant/60 mr-2 text-[10px] shrink-0 leading-5">
                     {new Date(entry.timestamp).toLocaleTimeString()}
                   </span>
                   <span className="text-on-surface-variant/60 mr-1 shrink-0 text-[10px] leading-5">[{entry.type}]</span>
-                  <span className="whitespace-pre-wrap break-all flex-1 min-w-0">
-                    {displayText}
+                  <span className={expanded ? 'whitespace-pre-wrap break-all flex-1 min-w-0' : 'line-clamp-1 flex-1 min-w-0'}>
+                    {fullText}
                   </span>
-                  <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div
+                    className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCopy(fullText, i); }}
                       className="p-0.5 rounded hover:bg-on-surface/10 transition-colors leading-none"
@@ -162,14 +149,6 @@ export function CellOutput({ cell }: Props) {
                     </button>
                   </div>
                 </div>
-                {long && (
-                  <button
-                    onClick={() => toggleExpand(i)}
-                    className="text-[10px] text-primary hover:text-primary/80 transition-colors ml-24 mt-0.5"
-                  >
-                    {expanded ? 'Show less' : 'Show more'}
-                  </button>
-                )}
               </div>
             );
           })

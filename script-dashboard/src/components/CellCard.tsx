@@ -42,7 +42,7 @@ export function CellCard({ cell, highlighted }: Props) {
       )}
 
       <div className={`${collapsible && !editorExpanded ? 'editor-collapsed' : ''}`}>
-        <CellEditor cell={cell} />
+        <CellEditor cell={cell} onFocus={() => setEditorExpanded(true)} />
       </div>
 
       {collapsible && !editorExpanded && (

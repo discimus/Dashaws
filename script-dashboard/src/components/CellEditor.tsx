@@ -12,6 +12,7 @@ import type { Cell } from '../types/cell';
 
 interface Props {
   cell: Cell;
+  onFocus?: () => void;
 }
 
 function envCompletionSource(context: CompletionContext) {
@@ -66,7 +67,7 @@ function secretsCompletionSource(context: CompletionContext) {
   };
 }
 
-export function CellEditor({ cell }: Props) {
+export function CellEditor({ cell, onFocus }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const isExternalUpdateRef = useRef(false);
@@ -79,11 +80,12 @@ export function CellEditor({ cell }: Props) {
 
   const handleFocus = useCallback(() => {
     isFocusedRef.current = true;
+    onFocus?.();
     const st = useCellsStore.getState();
     const cc = st.cells.find(c => c.id === cell.id);
     if (cc?.lockedBy && cc.lockedBy !== st.clientId) return;
     lockCell(cell.id);
-  }, [cell.id, lockCell]);
+  }, [cell.id, lockCell, onFocus]);
 
   const handleBlur = useCallback(() => {
     isFocusedRef.current = false;
