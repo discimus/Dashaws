@@ -64,7 +64,11 @@ export function CellCard({ cell, highlighted }: Props) {
       )}
 
       <div className="px-3 py-1 border-t border-outline-variant bg-surface-container flex items-center justify-between text-[10px] text-on-surface-variant">
-        <span>Script ID: {cell.id.slice(0, 8)}...</span>
+        <span className="flex items-center gap-2">
+          <span>ID: {cell.id.slice(0, 8)}</span>
+          <span className="bg-surface-container-highest px-1.5 py-0.5 rounded-full text-[9px] font-medium">{cell.language === 'python' ? 'Python' : 'JS'}</span>
+          <span>{cell.script.split('\n').length} lines</span>
+        </span>
         <span>
           {cell.lastRunAt ? `Last run: ${formatTimeAgo(cell.lastRunAt)}` : 'Not run yet'}
           {cell.enabled && ` · Every ${formatInterval(cell.intervalMs)}`}
