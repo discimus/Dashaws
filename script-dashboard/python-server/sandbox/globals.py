@@ -3,9 +3,6 @@ import builtins as _builtins
 import json
 import time
 import uuid as _uuid
-import urllib.request
-import urllib.error
-import urllib.parse
 
 # Import common libraries available to user scripts
 import requests
@@ -114,7 +111,8 @@ def create_sandbox_globals(
     env: dict[str, str],
     secrets_obj: dict[str, str],
     props: dict[str, object],
-    api_base: str,
+    enqueue_fn,
+    emit_fn,
 ):
     """Create globals dict for exec() that provides safe builtins, state, props, env, etc."""
 
@@ -150,8 +148,8 @@ def create_sandbox_globals(
     globals_dict["props"] = props if isinstance(props, dict) else {}
     globals_dict["env"] = env if isinstance(env, dict) else {}
     globals_dict["secrets"] = secrets_obj if isinstance(secrets_obj, dict) else {}
-    globals_dict["queue"] = _Queue(api_base, log_entry)
-    globals_dict["pubsub"] = _PubSub(api_base, log_entry)
+    globals_dict["queue"] = _Queue(enqueue_fn, log_entry)
+    globals_dict["pubsub"] = _PubSub(emit_fn, log_entry)
     globals_dict["True"] = True
     globals_dict["False"] = False
     globals_dict["None"] = None
@@ -192,55 +190,26 @@ class _Print:
 
 
 class _Queue:
-    def __init__(self, api_base, log_entry):
-        self._api = api_base
+    def __init__(self, enqueue_fn, log_entry):
+        self._enqueue = enqueue_fn
         self._log = log_entry
 
     def enqueue(self, name, body):
         try:
-            get_req = urllib.request.Request(self._api + "/queues", method="GET")
-            with urllib.request.urlopen(get_req, timeout=5) as resp:
-                queues = json.loads(resp.read().decode("utf-8"))
-            if name not in queues:
-                queues[name] = {
-                    "name": name,
-                    "maxRetries": 3,
-                    "subscriberIds": [],
-                    "messages": [],
-                }
             msg_body = json.dumps(body) if not isinstance(body, str) else body
-            queues[name]["messages"].append({
-                "id": str(_uuid.uuid4()),
-                "body": msg_body,
-                "timestamp": int(time.time() * 1000),
-                "retries": 0,
-            })
-            put_data = json.dumps(queues).encode("utf-8")
-            req = urllib.request.Request(
-                self._api + "/queues",
-                data=put_data,
-                headers={"Content-Type": "application/json"},
-                method="PUT",
-            )
-            urllib.request.urlopen(req, timeout=5)
+            self._enqueue(name, msg_body)
         except Exception as e:
             self._log("warn", [f"queue.enqueue failed: {e}"])
 
 
 class _PubSub:
-    def __init__(self, api_base, log_entry):
-        self._api = api_base
+    def __init__(self, emit_fn, log_entry):
+        self._emit = emit_fn
         self._log = log_entry
 
     def emit(self, name, body):
         try:
-            data = json.dumps(body).encode("utf-8")
-            req = urllib.request.Request(
-                self._api + f"/topics/{urllib.parse.quote(name, safe='')}/emit",
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            urllib.request.urlopen(req, timeout=5)
+            msg_body = json.dumps(body) if not isinstance(body, str) else body
+            self._emit(name, msg_body)
         except Exception as e:
             self._log("warn", [f"pubsub.emit failed: {e}"])

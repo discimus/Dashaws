@@ -44,14 +44,15 @@ async def execute_script(
     env: dict[str, str],
     secrets_obj: dict[str, str],
     props: dict[str, object],
-    api_base: str,
+    enqueue_fn,
+    emit_fn,
     timeout: float = 0.0,
 ) -> dict:
     """Execute a Python script in a sandbox with optional timeout. Returns ExecutionResult-compatible dict."""
     secrets_set = set(v for v in (secrets_obj or {}).values() if v)
 
     globals_dict, output, state_ref = create_sandbox_globals(
-        cell_state, env, secrets_obj, props, api_base
+        cell_state, env, secrets_obj, props, enqueue_fn, emit_fn
     )
 
     _check_js_patterns(script, output)

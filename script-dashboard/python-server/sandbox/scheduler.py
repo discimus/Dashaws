@@ -73,19 +73,42 @@ class ServerScheduler:
         get_env: Callable[[], dict[str, object]],
         get_data: Callable[[], dict[str, object]],
         on_emit: Callable[[str, str], object],
-        api_base: str = "http://localhost:3456/api",
     ):
         self._get_cell = get_cell
         self._on_result = on_result
         self._get_env = get_env
         self._get_data = get_data
         self._on_emit = on_emit
-        self._api_base = api_base
 
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._running = True
         self._queue_task: asyncio.Task[None] | None = None
         self._cron_task: asyncio.Task[None] | None = None
+
+    def _make_enqueue_fn(self):
+        def enqueue(name, body):
+            data = self._get_data()
+            queues = data.get("queues", {})
+            if name not in queues:
+                queues[name] = {
+                    "name": name,
+                    "maxRetries": 3,
+                    "subscriberIds": [],
+                    "messages": [],
+                }
+            queues[name]["messages"].append({
+                "id": str(uuid.uuid4()),
+                "body": body,
+                "timestamp": int(time.time() * 1000),
+                "retries": 0,
+            })
+        return enqueue
+
+    def _make_emit_fn(self):
+        loop = asyncio.get_running_loop()
+        def emit(name, body):
+            loop.call_soon_threadsafe(self._on_emit, name, body)
+        return emit
 
     async def run_once(self, cell_id: str, props: dict[str, object] | None = None) -> dict | None:
         cell = self._get_cell(cell_id)
@@ -101,7 +124,8 @@ class ServerScheduler:
             env_data.get("env", {}),
             env_data.get("secretsObj", {}),
             resolved_props,
-            self._api_base,
+            self._make_enqueue_fn(),
+            self._make_emit_fn(),
             timeout=float(cell.get("timeoutMs", 0) or 0) / 1000.0 if cell.get("timeoutMs") else 0.0,
         )
 
