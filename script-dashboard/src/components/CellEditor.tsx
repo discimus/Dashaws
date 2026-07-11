@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { keymap } from '@codemirror/view';
 import { Compartment } from '@codemirror/state';
-import { indentMore, toggleComment } from '@codemirror/commands';
+import { indentLess, indentMore, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -145,6 +145,9 @@ export function CellEditor({ cell, onFocus }: Props) {
         if (acceptCompletion(target)) return true;
         return indentMore(target);
       },
+    }, {
+      key: 'Shift-Tab',
+      run: indentLess,
     }]);
 
     const commentKeymap = keymap.of([{
@@ -156,6 +159,7 @@ export function CellEditor({ cell, onFocus }: Props) {
       keydown: (event) => {
         const key = event.key.toLowerCase();
         if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x', 'z', 'y', 'a', ';', '/'].includes(key)) return false;
+        if (event.key === 'Tab' && event.shiftKey) return false;
         if (event.ctrlKey || event.metaKey || event.altKey) { event.preventDefault(); return true; }
         if (/^f\d+$/i.test(key)) { event.preventDefault(); return true; }
         return false;
