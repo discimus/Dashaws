@@ -117,7 +117,7 @@ export function CellOutput({ cell }: Props) {
               <div
                 key={i}
                 onClick={() => toggleExpand(i)}
-                className={`${getColor(entry.type)} group cursor-pointer py-0.5 px-1 border-b border-outline-variant/40 hover:bg-on-surface/4 transition-colors`}
+                className={`${getColor(entry.type)} group cursor-pointer py-0.5 px-1 border-b border-outline-variant/40 hover:bg-on-surface/4 transition-colors even:bg-on-surface/[0.06]`}
               >
                 <div className="flex items-start gap-1">
                   <span className="text-on-surface-variant/60 mr-2 text-[10px] shrink-0 leading-5">
