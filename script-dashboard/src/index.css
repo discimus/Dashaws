@@ -267,3 +267,13 @@
   color: var(--color-primary);
   font-weight: 600;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Collapsible script editor                                          */
+/* ------------------------------------------------------------------ */
+.editor-collapsed .cm-editor {
+  max-height: 16rem;
+}
+.editor-collapsed .cm-scroller {
+  overflow: hidden;
+}
