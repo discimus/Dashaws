@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { Cell } from '../types/cell';
 import { copyToClipboard } from '../utils/clipboard';
+import { formatValue } from '../utils/format-value';
 
 interface Props {
   cell: Cell;
@@ -66,20 +67,6 @@ export function CellOutput({ cell }: Props) {
       case 'table': return 'text-accent-purple';
       default: return 'text-on-surface-variant';
     }
-  };
-
-  const formatValue = (val: unknown): string => {
-    if (val === null) return 'null';
-    if (val === undefined) return 'undefined';
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object') {
-      try {
-        return JSON.stringify(val, null, 2);
-      } catch {
-        return String(val);
-      }
-    }
-    return String(val);
   };
 
   const toggleExpand = (index: number) => {
