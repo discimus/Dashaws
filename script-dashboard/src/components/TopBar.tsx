@@ -38,7 +38,7 @@ export function TopBar() {
               className="text-on-surface-variant hover:text-on-surface cursor-help text-xs"
               title="Keep-alive prevents the browser from sleeping or throttling script timers. It uses the Wake Lock API (keeps screen on) and a silent audio loop (prevents timer throttling in background tabs). Enable this for long-running scripts that need consistent interval timing."
             >
-              &#9432;
+              <svg width="13" height="13" viewBox="0 0 13 13" className="inline-block align-middle shrink-0"><circle cx="6.5" cy="6.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.6"/><text x="6.5" y="9.5" textAnchor="middle" fontSize="9" fontWeight="bold" fill="currentColor" opacity="0.8">?</text></svg>
             </span>
           </span>
 
@@ -59,7 +59,7 @@ export function TopBar() {
                 className="text-on-surface-variant hover:text-on-surface cursor-help text-xs"
                 title="Auto-unlock keeps your secrets password in session storage, so you don't have to re-enter it on every page refresh. Secrets are decrypted automatically on load when this is active. Disable if you want to manually enter the password each time for extra security."
               >
-                &#9432;
+                <svg width="13" height="13" viewBox="0 0 13 13" className="inline-block align-middle shrink-0"><circle cx="6.5" cy="6.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.6"/><text x="6.5" y="9.5" textAnchor="middle" fontSize="9" fontWeight="bold" fill="currentColor" opacity="0.8">?</text></svg>
               </span>
             </span>
           )}

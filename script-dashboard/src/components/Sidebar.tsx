@@ -33,15 +33,15 @@ export function Sidebar({ view, onViewChange, onEditCell }: Props) {
         <SidebarLink active={view === 'overview'} onClick={() => onViewChange('overview')} label="Overview"
           info="Dashboard overview showing all scripts at a glance. Monitor statuses, recent outputs, and system stats in one place." />
         <SidebarLink active={view === 'scripts'} onClick={() => onViewChange('scripts')} label="Scripts"
-          info="Create, edit, and run JavaScript scripts on configurable intervals. Each script runs in an isolated sandbox with strict mode and blocked dangerous globals." />
+          info="Create, edit, and run scripts on configurable intervals. Each script runs in an isolated sandbox. Supports JavaScript and Python runtimes." />
         <SidebarLink active={view === 'env'} onClick={() => onViewChange('env')} label="Environment"
-          info="Environment variables accessible inside scripts via $env.KEY. Use for non-sensitive configuration like API URLs, feature flags, and settings." />
+          info="Environment variables accessible via $env.KEY (JS) or env['KEY'] (Python). Use for non-sensitive configuration like API URLs, feature flags, and settings." />
         <SidebarLink active={view === 'secrets'} onClick={() => onViewChange('secrets')} label={`Secrets ${hasSecrets ? (secretsLocked ? '\uD83D\uDD12' : '\uD83D\uDD13') : ''}`}
-          info="Encrypted secrets stored with AES-GCM + PBKDF2. Accessible via $secrets.KEY. Values are masked in logs to prevent leakage. Password-protected." />
+          info="Encrypted secrets via $secrets.KEY (JS) or secrets['KEY'] (Python). AES-GCM + PBKDF2 encrypted. Values are masked in logs. Password-protected." />
         <SidebarLink active={view === 'queues'} onClick={() => onViewChange('queues')} label="Queues"
-          info="FIFO message queues (like SQS). Scripts subscribe and process messages in order. Enqueue via $queue.enqueue(name, body) inside scripts." />
+          info="FIFO message queues (like SQS). Scripts subscribe and process messages in order. Enqueue via $queue.enqueue() (JS) or queue.enqueue() (Python)." />
         <SidebarLink active={view === 'pubsub'} onClick={() => onViewChange('pubsub')} label="Pub/Sub"
-          info="Broadcast event topics (like SNS). Emitting an event triggers all subscribed scripts immediately. Use $pubsub.emit(name, body) inside scripts." />
+          info="Broadcast event topics (like SNS). Emitting an event triggers all subscribed scripts immediately. Use $pubsub.emit() (JS) or pubsub.emit() (Python)." />
         <SidebarLink active={view === 'crons'} onClick={() => onViewChange('crons')} label="Cronjobs"
           info="Schedule scripts, queues, or pub/sub events using cron expressions (min hour dom month dow). Supports */n intervals, ranges, and comma-separated values. Polled every 15s." />
       </nav>
@@ -159,7 +159,7 @@ function SidebarLink({ active, onClick, label, info }: { active: boolean; onClic
       <span>{label}</span>
       {info && (
         <span className="text-on-surface-variant hover:text-on-surface cursor-help text-xs flex-shrink-0" title={info}>
-          &#9432;
+          <svg width="13" height="13" viewBox="0 0 13 13" className="inline-block align-middle shrink-0"><circle cx="6.5" cy="6.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.6"/><text x="6.5" y="9.5" textAnchor="middle" fontSize="9" fontWeight="bold" fill="currentColor" opacity="0.8">?</text></svg>
         </span>
       )}
     </button>

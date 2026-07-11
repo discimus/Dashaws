@@ -513,7 +513,7 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
     const defaultLang = get().languages[0] || 'javascript';
     const isPython = defaultLang === 'python';
     const defaultScript = isPython
-      ? `# Click ? Help for the full reference
+      ? `# Ctrl+Space for autocomplete — ? Help for full reference
 #
 # Quick globals: state props env secrets queue pubsub print console requests
 
@@ -522,7 +522,7 @@ print("Hello!")
 state["counter"] = state.get("counter", 0) + 1
 print("Run count:", state["counter"])
 `
-      : `// Click ? Help for the full reference
+      : `// Ctrl+Space for autocomplete — ? Help for full reference
 //
 // Quick globals: $state $env $secrets $props $queue $pubsub fetch console loadPackage setTimeout signal
 
