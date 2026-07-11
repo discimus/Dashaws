@@ -253,10 +253,6 @@ const res = await fetch("https://example.com", { signal });`}</Example>
               <td className="py-1.5">Toggle comment</td>
             </tr>
             <tr className="border-b border-outline-variant/50">
-              <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + Enter</Code></td>
-              <td className="py-1.5">Run script once</td>
-            </tr>
-            <tr className="border-b border-outline-variant/50">
               <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + Shift + F</Code></td>
               <td className="py-1.5">Format JSON in props editor</td>
             </tr>
