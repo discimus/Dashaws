@@ -5,6 +5,7 @@ import { Prec } from '@codemirror/state';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { useCellsStore } from '../store/useCellsStore';
 
 interface Props {
   value: string;
@@ -16,14 +17,15 @@ export function JsonInput({ value, onChange, onSubmit }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+  const theme = useCellsStore(s => s.theme);
   onChangeRef.current = onChange;
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const jsonTheme = Prec.high(EditorView.theme({
-      '&': { backgroundColor: '#191a1e !important' },
-      '.cm-gutters': { backgroundColor: '#141316 !important', borderRight: '1px solid #43474e !important', color: '#8e9099 !important' },
+      '&': { backgroundColor: 'var(--color-surface-container-low) !important' },
+      '.cm-gutters': { backgroundColor: 'var(--color-surface) !important', borderRight: '1px solid var(--color-outline-variant) !important', color: 'var(--color-outline) !important' },
     }));
 
     const autoHeight = EditorView.theme({
@@ -87,7 +89,7 @@ export function JsonInput({ value, onChange, onSubmit }: Props) {
       extensions: [
         basicSetup,
         json(),
-        oneDark,
+        theme === 'dark' ? oneDark : [],
         linter(jsonParseLinter()),
         shortcuts,
         jsonTheme,

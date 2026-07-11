@@ -195,6 +195,7 @@ interface CellsState {
   languages: string[];
   clientId: string;
   editingCellId: string | null;
+  theme: 'dark' | 'light';
 
   init: () => Promise<void>;
   login: (password: string) => Promise<boolean>;
@@ -228,6 +229,7 @@ interface CellsState {
   deleteSelected: () => void;
   keepAlive: boolean;
   toggleKeepAlive: () => void;
+  toggleTheme: () => void;
 
   addQueue: (name: string, maxRetries: number) => void;
   deleteQueue: (name: string) => void;
@@ -429,6 +431,12 @@ export const useCellsStore = create<CellsState>()((set, get) => ({
   languages: ['javascript'],
   clientId: globalThis.crypto?.randomUUID?.() || Math.random().toString(36).substring(2, 18),
   editingCellId: null,
+  theme: (() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('dashaws-theme') : null;
+    if (saved === 'light' || saved === 'dark') return saved;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    return 'dark';
+  })(),
 
   init: async () => {
     if (initStarted) return;
@@ -889,6 +897,14 @@ console.log("Run count:", $state.counter);
     set({ keepAlive: next });
     if (next) startKeepAlive();
     else stopKeepAlive();
+  },
+
+  toggleTheme: () => {
+    set(s => {
+      const next = s.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('dashaws-theme', next);
+      return { theme: next as 'dark' | 'light' };
+    });
   },
 
   startSelected: () => {

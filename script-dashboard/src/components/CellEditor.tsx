@@ -142,10 +142,12 @@ export function CellEditor({ cell, onFocus }: Props) {
   const isExternalUpdateRef = useRef(false);
   const isFocusedRef = useRef(false);
   const editableCompartmentRef = useRef(new Compartment());
+  const themeCompartmentRef = useRef(new Compartment());
   const updateCell = useCellsStore(s => s.updateCell);
   const lockCell = useCellsStore(s => s.lockCell);
   const unlockCell = useCellsStore(s => s.unlockCell);
   const clientId = useCellsStore(s => s.clientId);
+  const theme = useCellsStore(s => s.theme);
 
   const handleFocus = useCallback(() => {
     isFocusedRef.current = true;
@@ -322,7 +324,7 @@ export function CellEditor({ cell, onFocus }: Props) {
       extensions: [
         basicSetup,
         langExt,
-        oneDark,
+        themeCompartmentRef.current.of(theme === 'dark' ? oneDark : []),
         completion,
         tabHandler,
         commentKeymap,
@@ -346,6 +348,14 @@ export function CellEditor({ cell, onFocus }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cell.id]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: themeCompartmentRef.current.reconfigure(theme === 'dark' ? oneDark : []),
+    });
+  }, [theme]);
 
   useEffect(() => {
     const view = viewRef.current;

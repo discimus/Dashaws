@@ -1,12 +1,10 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ */
-/*  Material Design 3 — design tokens                                  */
-/*  Dark scheme (neutral surfaces + blue primary). Elevation in dark   */
-/*  is expressed with progressively lighter "surface container" tones. */
+/*  Material Design 3 — design tokens (dark scheme default)            */
 /* ------------------------------------------------------------------ */
 @theme {
-  --font-sans: "Roboto", "Inter", "Segoe UI", system-ui, -apple-system,
+  --font-sans: "Inter Variable", "Inter", "Roboto", "Segoe UI", system-ui, -apple-system,
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: "Roboto Mono", "JetBrains Mono", "Cascadia Code", ui-monospace,
     "SFMono-Regular", Menlo, Consolas, monospace;
@@ -56,17 +54,100 @@
   --color-on-accent-purple: #40125e;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Light theme tokens                                                  */
+/* ------------------------------------------------------------------ */
+:root[data-theme="light"] {
+  --color-surface: #fdfbff;
+  --color-surface-container-lowest: #f5f2fa;
+  --color-surface-container-low: #efedf4;
+  --color-surface-container: #e9e7ef;
+  --color-surface-container-high: #e3e1e9;
+  --color-surface-container-highest: #dddbe9;
+  --color-on-surface: #1a1c1e;
+  --color-on-surface-variant: #43474e;
+  --color-outline: #73777f;
+  --color-outline-variant: #c3c6cf;
+
+  --color-primary: #1a5ab4;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #d6e3ff;
+  --color-on-primary-container: #001b3d;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #410002;
+
+  --color-success: #006e28;
+  --color-on-success: #ffffff;
+  --color-success-container: #98f7bb;
+  --color-on-success-container: #002106;
+
+  --color-warning: #8d6100;
+  --color-on-warning: #ffffff;
+  --color-warning-container: #ffdea1;
+  --color-on-warning-container: #2a1a00;
+
+  --color-accent-orange: #904a00;
+  --color-on-accent-orange: #ffffff;
+  --color-accent-pink: #b20038;
+  --color-on-accent-pink: #ffffff;
+  --color-accent-purple: #6200b3;
+  --color-on-accent-purple: #ffffff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-surface: #fdfbff;
+    --color-surface-container-lowest: #f5f2fa;
+    --color-surface-container-low: #efedf4;
+    --color-surface-container: #e9e7ef;
+    --color-surface-container-high: #e3e1e9;
+    --color-surface-container-highest: #dddbe9;
+    --color-on-surface: #1a1c1e;
+    --color-on-surface-variant: #43474e;
+    --color-outline: #73777f;
+    --color-outline-variant: #c3c6cf;
+    --color-primary: #1a5ab4;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #d6e3ff;
+    --color-on-primary-container: #001b3d;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #410002;
+    --color-success: #006e28;
+    --color-on-success: #ffffff;
+    --color-success-container: #98f7bb;
+    --color-on-success-container: #002106;
+    --color-warning: #8d6100;
+    --color-on-warning: #ffffff;
+    --color-warning-container: #ffdea1;
+    --color-on-warning-container: #2a1a00;
+    --color-accent-orange: #904a00;
+    --color-on-accent-orange: #ffffff;
+    --color-accent-pink: #b20038;
+    --color-on-accent-pink: #ffffff;
+    --color-accent-purple: #6200b3;
+    --color-on-accent-purple: #ffffff;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base styles                                                         */
+/* ------------------------------------------------------------------ */
 @layer base {
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   body {
     background-color: var(--color-surface);
     color: var(--color-on-surface);
   }
-  /* Calmer, thinner scrollbars that sit on the dark surfaces */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-outline-variant) transparent;
@@ -87,14 +168,13 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Material components                                                */
+/*  Material components                                                 */
 /* ------------------------------------------------------------------ */
 @layer components {
-  /* --- Buttons: pill shape + tonal state layer (Material 3) --------- */
   .md-btn {
     @apply relative inline-flex items-center justify-center gap-1.5 rounded-full
-      font-medium overflow-hidden select-none transition-shadow duration-150
-      focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60;
+      font-medium overflow-hidden select-none transition-all duration-150
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60;
   }
   .md-btn::after {
     content: "";
@@ -111,6 +191,9 @@
   .md-btn:focus-visible::after {
     opacity: 0.12;
   }
+  .md-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
   .md-btn:active:not(:disabled)::after {
     opacity: 0.16;
   }
@@ -124,7 +207,7 @@
     @apply bg-primary text-on-primary;
   }
   .md-btn-filled:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
   }
   .md-btn-tonal {
     @apply bg-surface-container-highest text-on-surface;
@@ -133,34 +216,33 @@
     @apply bg-error text-on-error focus-visible:ring-error/60;
   }
   .md-btn-danger:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
   .md-btn-success {
     @apply bg-success text-on-success focus-visible:ring-success/60;
   }
   .md-btn-success:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
   .md-btn-orange {
     @apply bg-accent-orange text-on-accent-orange focus-visible:ring-accent-orange/60;
   }
   .md-btn-orange:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
   .md-btn-pink {
     @apply bg-accent-pink text-on-accent-pink focus-visible:ring-accent-pink/60;
   }
   .md-btn-pink:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
   .md-btn-purple {
     @apply bg-accent-purple text-on-accent-purple focus-visible:ring-accent-purple/60;
   }
   .md-btn-purple:hover:not(:disabled) {
-    @apply shadow-md;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
 
-  /* --- Text fields -------------------------------------------------- */
   .md-field {
     @apply bg-surface-container-highest text-on-surface rounded-lg border
       border-outline-variant outline-none transition-colors
@@ -168,63 +250,59 @@
   }
   .md-field:focus {
     border-color: var(--color-primary);
-    box-shadow: inset 0 0 0 1px var(--color-primary);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
   }
 
-  /* Native selects: hide default chevron and draw a Material one */
   select.md-field {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c4c6cf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2343474e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
     background-size: 1rem 1rem;
     padding-right: 1.75rem;
   }
 
-  /* --- Elevated surfaces (menus, dialogs, popovers) ----------------- */
   .md-menu {
     @apply bg-surface-container-high border border-outline-variant rounded-xl
-      shadow-xl py-1.5;
+      py-1.5;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
   }
   .md-menu-item {
     @apply w-full text-left px-3 py-2 text-sm font-medium transition-colors;
   }
 
-  /* --- Card ---------------------------------------------------------- */
   .md-card {
     @apply bg-surface-container-low border border-outline-variant rounded-xl;
   }
 
-  /* --- Chip ---------------------------------------------------------- */
+  .card-raise {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-raise:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+    border-color: var(--color-outline);
+  }
+
   .md-chip {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]
       font-medium bg-surface-container-highest text-on-surface-variant;
   }
 
-  /* --- Inline code --------------------------------------------------- */
   .md-code {
     @apply font-mono rounded bg-surface-container-highest px-1.5 py-0.5;
   }
 }
 
 /* ------------------------------------------------------------------ */
-/*  Script run flash (retuned to primary token)                        */
+/*  Script run flash                                                    */
 /* ------------------------------------------------------------------ */
 @keyframes script-flash {
-  0% {
-    border-color: rgb(169 199 255 / 0.6);
-    box-shadow: 0 0 0 2px rgb(169 199 255 / 0.35);
-  }
-  30% {
-    border-color: rgb(169 199 255 / 0.95);
-    box-shadow: 0 0 0 4px rgb(169 199 255 / 0.5);
-  }
-  100% {
-    border-color: rgb(169 199 255 / 0);
-    box-shadow: 0 0 0 0 rgb(169 199 255 / 0);
-  }
+  0%   { border-color: rgb(169 199 255 / 0.6); box-shadow: 0 0 0 2px rgb(169 199 255 / 0.35); }
+  30%  { border-color: rgb(169 199 255 / 0.95); box-shadow: 0 0 0 4px rgb(169 199 255 / 0.5); }
+  100% { border-color: rgb(169 199 255 / 0); box-shadow: 0 0 0 0 rgb(169 199 255 / 0); }
 }
 
 .script-flash {
@@ -232,7 +310,19 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  CodeMirror autocomplete tooltip (aligned to Material surfaces)     */
+/*  Log entry fade-in                                                   */
+/* ------------------------------------------------------------------ */
+@keyframes log-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.log-entry-new {
+  animation: log-fade-in 0.3s ease-out;
+}
+
+/* ------------------------------------------------------------------ */
+/*  CodeMirror autocomplete tooltip                                     */
 /* ------------------------------------------------------------------ */
 .cm-tooltip.cm-tooltip-autocomplete {
   background-color: var(--color-surface-container-high);

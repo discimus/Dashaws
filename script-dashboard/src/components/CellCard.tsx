@@ -29,7 +29,7 @@ export function CellCard({ cell, highlighted }: Props) {
 
   return (
     <div className={`border rounded-xl overflow-hidden bg-surface-container-low transition-colors ${
-      highlighted ? 'script-flash' : lockedByOther ? 'border-warning/70' : 'border-outline-variant hover:border-outline'
+      highlighted ? 'script-flash' : lockedByOther ? 'border-warning/70' : cell.status === 'running' ? 'border-warning ring-2 ring-warning/30' : 'border-outline-variant hover:border-outline'
     }`}>
       <div className="px-3 py-2 border-b border-outline-variant bg-surface-container">
         <CellControls cell={cell} onToggleParams={() => setShowParams(!showParams)} />

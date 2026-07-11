@@ -134,7 +134,7 @@ function OverviewCard({ cell, isRunning, blocked, onEdit, onStart, onStop, onRun
 
   return (
     <div
-      className="md-card hover:border-outline transition-colors p-3 cursor-pointer"
+      className="md-card card-raise p-3 cursor-pointer"
       onClick={onEdit}
     >
       <div className="flex items-start justify-between mb-2">
