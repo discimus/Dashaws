@@ -15,6 +15,25 @@ usage() {
     echo "  ./start-server.sh node 4000"
 }
 
+# --- Platform detection ---
+
+IS_WINDOWS_CROSS=0
+case "$(uname -s 2>/dev/null || echo "unknown")" in
+    MINGW*|MSYS*|CYGWIN*) IS_WINDOWS_CROSS=1 ;;
+esac
+
+# --- Python detection ---
+
+detect_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+    elif command -v python >/dev/null 2>&1; then
+        echo "python"
+    else
+        echo ""
+    fi
+}
+
 # --- Helpers ---
 
 check_frontend_build() {
@@ -30,10 +49,41 @@ check_frontend_build() {
     echo "[preflight] Frontend build complete."
 }
 
+check_python_version() {
+    VERSION=$("$VENV_PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || echo "0.0.0")
+    REQUIRED_MAJOR=3
+    REQUIRED_MINOR=12
+    REQUIRED_PATCH=3
+    MAJOR=$(echo "$VERSION" | cut -d. -f1)
+    MINOR=$(echo "$VERSION" | cut -d. -f2)
+    PATCH=$(echo "$VERSION" | cut -d. -f3)
+    if [ "$MAJOR" -lt "$REQUIRED_MAJOR" ] || { [ "$MAJOR" -eq "$REQUIRED_MAJOR" ] && [ "$MINOR" -lt "$REQUIRED_MINOR" ]; } || { [ "$MAJOR" -eq "$REQUIRED_MAJOR" ] && [ "$MINOR" -eq "$REQUIRED_MINOR" ] && [ "$PATCH" -lt "$REQUIRED_PATCH" ]; }; then
+        echo "ERROR: Python 3.12.3 or higher required. Found: $VERSION"
+        exit 1
+    fi
+    echo "[preflight] Python $VERSION OK."
+}
+
 check_python_deps() {
-    # Verify key dependency groups — if any fails, run full pip install
-    if python3 -c "
-import fastapi, uvicorn, apscheduler
+    # Create venv if it doesn't exist
+    if [ ! -d "$VENV_DIR" ]; then
+        echo "[preflight] Creating Python virtual environment..."
+        if [ -z "$PYTHON_CMD" ]; then
+            echo "ERROR: Python not found. Install Python >= 3.12.3"
+            exit 1
+        fi
+        "$PYTHON_CMD" -m venv "$VENV_DIR"
+        if [ ! -f "$VENV_PYTHON" ]; then
+            echo "ERROR: Failed to create virtual environment at $VENV_DIR"
+            exit 1
+        fi
+    fi
+
+    check_python_version
+
+    # Check dependencies using venv's python
+    if "$VENV_PYTHON" -c "
+import fastapi, uvicorn
 from Crypto.Cipher import AES
 import requests, feedparser, bs4, dotenv, xmltodict, pypdf
 import pandas, numpy, lxml, yaml, openpyxl, matplotlib
@@ -42,8 +92,11 @@ import sqlalchemy, psycopg2, pytest
         echo "[preflight] Python dependencies OK."
         return 0
     fi
+
     echo "[preflight] Python dependencies missing or incomplete. Installing..."
-    pip3 install -r python-server/requirements.txt
+    "$VENV_PYTHON" -m pip install --upgrade pip --quiet
+    "$VENV_PYTHON" -m pip install setuptools wheel --quiet
+    "$VENV_PYTHON" -m pip install -r python-server/requirements.txt
     echo "[preflight] Python dependencies installed."
 }
 
@@ -59,8 +112,8 @@ check_node_deps() {
 check_auth_config() {
     CONFIG_FILE="$SCRIPT_DIR/dashaws.config.json"
     if [ -f "$CONFIG_FILE" ]; then
-        if command -v python3 >/dev/null 2>&1; then
-            PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('password',''))" < "$CONFIG_FILE" 2>/dev/null || echo "")
+        if command -v "$PYTHON_CMD" >/dev/null 2>&1; then
+            PASSWORD=$("$PYTHON_CMD" -c "import json,sys; print(json.load(sys.stdin).get('password',''))" < "$CONFIG_FILE" 2>/dev/null || echo "")
             if [ -n "$PASSWORD" ] && [ "$PASSWORD" != "change-me" ]; then
                 echo "[auth] Config file found with custom password."
             elif [ "$PASSWORD" = "change-me" ]; then
@@ -69,7 +122,7 @@ check_auth_config() {
                 echo "[auth] WARNING: No password in config file. Server will start WITHOUT authentication."
             fi
         else
-            echo "[auth] Config file found (python3 not available to validate)."
+            echo "[auth] Config file found (python not available to validate)."
         fi
         return 0
     fi
@@ -100,8 +153,8 @@ check_auth_config() {
         return 0
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
-        python3 -c "import json,sys; print(json.dumps({'password': sys.argv[1]}, indent=2))" "$PASSWORD" > "$CONFIG_FILE"
+    if command -v "$PYTHON_CMD" >/dev/null 2>&1; then
+        "$PYTHON_CMD" -c "import json,sys; print(json.dumps({'password': sys.argv[1]}, indent=2))" "$PASSWORD" > "$CONFIG_FILE"
     else
         printf '{\n  "password": "%s"\n}\n' "$PASSWORD" > "$CONFIG_FILE"
     fi
@@ -120,6 +173,18 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR/script-dashboard"
+
+PYTHON_CMD=$(detect_python)
+
+# Set venv paths based on platform
+if [ "$IS_WINDOWS_CROSS" -eq 1 ]; then
+    VENV_DIR="$PROJECT_DIR/.venv"
+    VENV_PYTHON="$VENV_DIR/Scripts/python.exe"
+else
+    VENV_DIR="$PROJECT_DIR/.venv"
+    VENV_PYTHON="$VENV_DIR/bin/python3"
+fi
+
 cd "$PROJECT_DIR"
 
 export PORT
@@ -138,7 +203,7 @@ case "$RUNTIME" in
         check_python_deps
         check_frontend_build
         echo ""
-        exec python3 python-server/main.py
+        exec "$VENV_PYTHON" python-server/main.py
         ;;
     node)
         echo "=== Dashaws Node.js Server ==="

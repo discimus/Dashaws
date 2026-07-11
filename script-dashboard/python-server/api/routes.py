@@ -1,7 +1,7 @@
 """FastAPI routes — same REST API as the Node.js server."""
 import time
 import json
-from fastapi import APIRouter, Request, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body
 from fastapi.responses import JSONResponse
 
 from api import state as st
@@ -9,25 +9,65 @@ from utils.parse import parse_message_body
 
 router = APIRouter()
 
+# ── Validation constants (aligned with Node.js server limits) ────────
+_MAX_SCRIPT_SIZE = 1_000_000      # 1 MB
+_MAX_CELL_NAME = 256
+_MAX_ENV_KEY = 128
+_MAX_ENV_VALUE = 4096
+_MAX_SECRETS_VALUE = 4096
+_MAX_QUEUE_NAME = 128
+_MAX_TOPIC_NAME = 128
+_MAX_CRON_NAME = 128
+_MAX_CRON_COUNT = 200
+
+
+def _validate_cell_body(body: dict) -> None:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON object"})
+    if body.get("script") and isinstance(body["script"], str) and len(body["script"]) > _MAX_SCRIPT_SIZE:
+        raise HTTPException(status_code=400, detail={"error": f"Script exceeds max size ({_MAX_SCRIPT_SIZE // 1000} KB)"})
+    if body.get("name") and isinstance(body["name"], str) and len(body["name"]) > _MAX_CELL_NAME:
+        raise HTTPException(status_code=400, detail={"error": f"Name exceeds max length ({_MAX_CELL_NAME})"})
+
+
+def _validate_env_body(body: dict) -> None:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON object"})
+    for k, v in body.items():
+        if not isinstance(k, str) or len(k) > _MAX_ENV_KEY:
+            raise HTTPException(status_code=400, detail={"error": f"Env key exceeds max length ({_MAX_ENV_KEY})"})
+        if not isinstance(v, str) or len(v) > _MAX_ENV_VALUE:
+            raise HTTPException(status_code=400, detail={"error": f"Env value exceeds max length ({_MAX_ENV_VALUE})"})
+
+
+def _validate_secrets_body(body: dict) -> None:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON object"})
+    for k in ("iv", "data", "salt", "hash"):
+        if k not in body:
+            raise HTTPException(status_code=400, detail={"error": f"Missing required field: {k}"})
+        if not isinstance(body[k], str) or len(body[k]) > 5_000_000:
+            raise HTTPException(status_code=400, detail={"error": f"Field '{k}' is too large or invalid"})
+
 
 @router.get("/health")
-async def health():
+async def health() -> dict:
     return {"ok": True, "timestamp": int(time.time() * 1000)}
 
 
 @router.get("/languages")
-async def languages():
+async def languages() -> list[str]:
     return st.server_languages
 
 
 # Cells
 @router.get("/cells")
-async def list_cells():
+async def list_cells() -> list[dict]:
     return st.cells
 
 
 @router.get("/cells/{id}")
-async def get_cell(id: str):
+async def get_cell(id: str) -> dict:
     for c in st.cells:
         if c.get("id") == id:
             return c
@@ -35,7 +75,8 @@ async def get_cell(id: str):
 
 
 @router.put("/cells/{id}")
-async def put_cell(id: str, body: dict):
+async def put_cell(id: str, body: dict) -> dict:
+    _validate_cell_body(body)
     allowed = {'name', 'language', 'script', 'intervalMs', 'timeoutMs', 'enabled', 'params', 'status', 'output', 'state', 'createdAt', 'lockedBy', 'lockedAt'}
     cell = {k: body[k] for k in allowed if k in body}
     cell.update({"id": id, "updatedAt": int(time.time() * 1000)})
@@ -46,13 +87,13 @@ async def put_cell(id: str, body: dict):
 
 
 @router.delete("/cells/{id}")
-async def delete_cell(id: str):
+async def delete_cell(id: str) -> dict:
     await st.remove_cell(id)
     return {"ok": True}
 
 
 @router.post("/cells/{id}/run")
-async def run_cell(id: str, body: dict = None):
+async def run_cell(id: str, body: dict | None = None) -> dict:
     cell = None
     for c in st.cells:
         if c.get("id") == id:
@@ -68,7 +109,7 @@ async def run_cell(id: str, body: dict = None):
 
 
 @router.post("/cells/{id}/start")
-async def start_cell(id: str):
+async def start_cell(id: str) -> dict:
     for c in st.cells:
         if c.get("id") == id:
             c["enabled"] = True
@@ -80,7 +121,7 @@ async def start_cell(id: str):
 
 
 @router.post("/cells/{id}/stop")
-async def stop_cell(id: str):
+async def stop_cell(id: str) -> dict:
     for c in st.cells:
         if c.get("id") == id:
             c["enabled"] = False
@@ -93,12 +134,13 @@ async def stop_cell(id: str):
 
 # Environment
 @router.get("/env")
-async def get_env():
+async def get_env() -> dict[str, str]:
     return st.server_env
 
 
 @router.put("/env")
-async def put_env(body: dict):
+async def put_env(body: dict) -> dict[str, str]:
+    _validate_env_body(body)
     st.server_env.clear()
     st.server_env.update(body)
     st.persist_state()
@@ -107,7 +149,7 @@ async def put_env(body: dict):
 
 # Secrets
 @router.get("/secrets/status")
-async def secrets_status():
+async def secrets_status() -> dict:
     return {
         "hasBlob": st.server_secrets_blob is not None,
         "unlocked": st.server_secrets_password is not None and len(st.server_secrets) > 0,
@@ -115,7 +157,7 @@ async def secrets_status():
 
 
 @router.post("/secrets/unlock")
-async def unlock(body: dict):
+async def unlock(body: dict) -> dict:
     password = body.get("password")
     if not password or not isinstance(password, str):
         raise HTTPException(status_code=400, detail={"error": "Password required"})
@@ -126,33 +168,37 @@ async def unlock(body: dict):
 
 
 @router.post("/secrets/lock")
-async def lock():
+async def lock() -> dict:
     st.lock_secrets()
     return {"ok": True}
 
 
 @router.put("/secrets")
-async def put_secrets(body: dict):
-    if not all(k in body for k in ("iv", "data", "salt", "hash")):
-        raise HTTPException(status_code=400, detail={"error": "Invalid encrypted blob"})
+async def put_secrets(body: dict) -> dict:
+    _validate_secrets_body(body)
     await st.set_secrets_blob(body)
     return {"ok": True}
 
 
 @router.delete("/secrets")
-async def delete_secrets():
+async def delete_secrets() -> dict:
     st.clear_secrets_all()
     return {"ok": True}
 
 
 # Queues
 @router.get("/queues")
-async def get_queues():
+async def get_queues() -> dict:
     return st.server_queues
 
 
 @router.put("/queues")
-async def put_queues(body: dict):
+async def put_queues(body: dict) -> dict:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON object"})
+    for name, queue in body.items():
+        if not isinstance(name, str) or len(name) > _MAX_QUEUE_NAME:
+            raise HTTPException(status_code=400, detail={"error": f"Queue name exceeds max length ({_MAX_QUEUE_NAME})"})
     st.server_queues.clear()
     st.server_queues.update(body)
     st.persist_state()
@@ -161,12 +207,17 @@ async def put_queues(body: dict):
 
 # Topics
 @router.get("/topics")
-async def get_topics():
+async def get_topics() -> dict:
     return st.server_event_topics
 
 
 @router.put("/topics")
-async def put_topics(body: dict):
+async def put_topics(body: dict) -> dict:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON object"})
+    for name, topic in body.items():
+        if not isinstance(name, str) or len(name) > _MAX_TOPIC_NAME:
+            raise HTTPException(status_code=400, detail={"error": f"Topic name exceeds max length ({_MAX_TOPIC_NAME})"})
     st.server_event_topics.clear()
     st.server_event_topics.update(body)
     st.persist_state()
@@ -174,7 +225,7 @@ async def put_topics(body: dict):
 
 
 @router.post("/topics/{name}/emit")
-async def emit_topic(name: str, body, request: Request = None):
+async def emit_topic(name: str, body) -> dict:
     topic = st.server_event_topics.get(name)
     if not topic:
         raise HTTPException(status_code=404, detail={"error": "Topic not found"})
@@ -193,12 +244,22 @@ async def emit_topic(name: str, body, request: Request = None):
 
 # Crons
 @router.get("/crons")
-async def get_crons():
+async def get_crons() -> list[dict]:
     return st.server_crons
 
 
 @router.put("/crons")
-async def put_crons(body: list = Body(...)):
+async def put_crons(body: list = Body(...)) -> list[dict]:
+    if not isinstance(body, list):
+        raise HTTPException(status_code=400, detail={"error": "Body must be a JSON array"})
+    if len(body) > _MAX_CRON_COUNT:
+        raise HTTPException(status_code=400, detail={"error": f"Too many cronjobs (max {_MAX_CRON_COUNT})"})
+    for cron in body:
+        if not isinstance(cron, dict):
+            raise HTTPException(status_code=400, detail={"error": "Each cron must be an object"})
+        name = cron.get("name", "")
+        if not isinstance(name, str) or len(name) > _MAX_CRON_NAME:
+            raise HTTPException(status_code=400, detail={"error": f"Cron name exceeds max length ({_MAX_CRON_NAME})"})
     st.server_crons.clear()
     st.server_crons.extend(body or [])
     if st.server_secrets_blob and not st.server_secrets_password:

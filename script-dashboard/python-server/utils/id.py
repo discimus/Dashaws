@@ -1,6 +1,6 @@
 """ID generation and formatting utilities."""
 import uuid
-import re
+import time
 
 
 def generate_id() -> str:
@@ -11,7 +11,7 @@ def strip_comments(script: str) -> str:
     if not script:
         return ""
     lines = script.split("\n")
-    result = []
+    result: list[str] = []
     in_block = False
     for line in lines:
         stripped = line.strip()
@@ -33,16 +33,16 @@ def strip_comments(script: str) -> str:
 
 
 def format_time_ago(ts: float) -> str:
-    seconds = max(0, (__import__("time").time() * 1000 - ts) / 1000)
+    seconds = max(0, (time.time() * 1000 - ts) / 1000)
     if seconds < 10:
         return "just now"
     if seconds < 60:
-        return "{}s ago".format(int(seconds))
+        return f"{int(seconds)}s ago"
     minutes = int(seconds / 60)
     if minutes < 60:
-        return "{}m ago".format(minutes)
+        return f"{minutes}m ago"
     hours = int(minutes / 60)
     if hours < 24:
-        return "{}h ago".format(hours)
+        return f"{hours}h ago"
     days = int(hours / 24)
-    return "{}d ago".format(days)
+    return f"{days}d ago"

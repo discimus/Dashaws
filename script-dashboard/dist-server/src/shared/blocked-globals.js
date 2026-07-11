@@ -36,5 +36,7 @@ export const SERVER_BLOCKED_GLOBALS = {
     __filename: undefined,
     process: undefined,
     Function: undefined,
+    setImmediate: undefined,
+    queueMicrotask: undefined,
 };
 //# sourceMappingURL=blocked-globals.js.map

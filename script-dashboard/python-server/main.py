@@ -3,6 +3,7 @@ import os
 import json
 import secrets
 import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Body
@@ -10,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from api.routes import router as api_router
-from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all, auth_enabled, valid_tokens
+from api.state import init_server, scheduler, cells, server_queues, server_event_topics, server_crons, flush_all, auth_enabled, valid_tokens, cancel_pending_pubsub_tasks
 
 COOKIE_NAME = "dashaws_token"
 TOKEN_MAX_AGE_S = 24 * 60 * 60
@@ -22,7 +23,7 @@ _config_paths = [
     os.path.join(os.getcwd(), "dashaws.config.json"),
     os.path.join(os.getcwd(), "..", "dashaws.config.json"),
 ]
-_server_password = None
+_server_password: str | None = None
 
 for _p in _config_paths:
     try:
@@ -40,9 +41,7 @@ for _p in _config_paths:
 if not _server_password:
     print("[auth] No password configured — authentication disabled")
 
-_failed_attempts: dict = {}
-
-import asyncio
+_failed_attempts: dict[str, dict] = {}
 
 
 def _get_client_ip(request: Request) -> str:
@@ -114,10 +113,15 @@ def _clear_auth_cookie(response: JSONResponse) -> None:
 async def _cleanup_old_attempts():
     while True:
         await asyncio.sleep(60)
-        cutoff = time.time() * 1000 - 10 * 60 * 1000
+        now = time.time()
+        cutoff = now * 1000 - 10 * 60 * 1000
         for ip in list(_failed_attempts.keys()):
             if _failed_attempts[ip]["firstAttempt"] < cutoff:
                 del _failed_attempts[ip]
+        token_cutoff = now - TOKEN_MAX_AGE_S
+        for t, ts in list(valid_tokens.items()):
+            if ts < token_cutoff:
+                del valid_tokens[t]
 
 
 @asynccontextmanager
@@ -126,13 +130,8 @@ async def lifespan(app: FastAPI):
     await init_server()
 
     PORT = int(os.environ.get("PORT", "3456"))
-    print("Server running at http://localhost:{}".format(PORT))
-    print("Cells: {}, Queues: {}, Topics: {}, Crons: {}".format(
-        len(cells),
-        len(server_queues),
-        len(server_event_topics),
-        len(server_crons),
-    ))
+    print(f"Server running at http://localhost:{PORT}")
+    print(f"Cells: {len(cells)}, Queues: {len(server_queues)}, Topics: {len(server_event_topics)}, Crons: {len(server_crons)}")
 
     cleanup_task = asyncio.create_task(_cleanup_old_attempts())
 
@@ -147,6 +146,7 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
     if scheduler:
         await scheduler.shutdown()
+    await cancel_pending_pubsub_tasks()
     await flush_all()
     print("Shutdown complete.")
 
@@ -172,11 +172,15 @@ async def auth_middleware(request: Request, call_next):
     if not token or token not in valid_tokens:
         return JSONResponse(status_code=401, content={"error": "Authentication required"})
 
+    if time.time() - valid_tokens[token] > TOKEN_MAX_AGE_S:
+        valid_tokens.pop(token, None)
+        return JSONResponse(status_code=401, content={"error": "Token expired"})
+
     return await call_next(request)
 
 
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -219,7 +223,7 @@ async def auth_login(body: dict = Body(...), request: Request = None):
     _clear_failed_attempts(ip)
 
     token = secrets.token_hex(32)
-    valid_tokens.add(token)
+    valid_tokens[token] = time.time()
 
     response = JSONResponse(content={"token": token})
     _set_auth_cookie(response, token)
@@ -240,7 +244,7 @@ async def auth_verify():
 async def auth_logout(request: Request):
     token = _extract_token(request)
     if token:
-        valid_tokens.discard(token)
+        valid_tokens.pop(token, None)
     response = JSONResponse(content={"ok": True})
     _clear_auth_cookie(response)
     return response

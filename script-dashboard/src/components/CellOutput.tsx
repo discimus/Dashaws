@@ -101,7 +101,7 @@ export function CellOutput({ cell }: Props) {
       {hasNewOutput && cell.output.length > 0 && (
         <button
           onClick={scrollToBottom}
-          className="md-btn md-btn-filled absolute bottom-2 right-2 text-sm px-3 py-1 shadow-md z-10"
+          className="absolute bottom-2 right-2 bg-primary text-on-primary text-xs font-medium px-3 py-1 rounded-full hover:shadow-md transition-shadow z-10"
         >
           ↓ New output
         </button>

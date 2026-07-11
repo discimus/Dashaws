@@ -2,8 +2,8 @@
 import asyncio
 import time
 import uuid
-import re
-from typing import Dict, Any, Callable, Optional, List
+from collections.abc import Callable
+from datetime import datetime
 
 from sandbox.executor import execute_script
 from utils.parse import parse_message_body
@@ -14,7 +14,6 @@ def cron_matches(expression: str, now_timestamp: float) -> bool:
     Check if a 5-field cron expression matches the given timestamp.
     Fields: minute hour day-of-month month day-of-week
     """
-    from datetime import datetime
     dt = datetime.fromtimestamp(now_timestamp / 1000.0)
     fields = expression.strip().split()
     if len(fields) != 5:
@@ -69,11 +68,11 @@ def _cron_part_matches(part: str, value: int) -> bool:
 class ServerScheduler:
     def __init__(
         self,
-        get_cell: Callable[[str], Optional[dict]],
-        on_result: Callable[[str, dict], Any],
-        get_env: Callable[[], Dict[str, Any]],
-        get_data: Callable[[], Dict[str, Any]],
-        on_emit: Callable[[str, str], Any],
+        get_cell: Callable[[str], dict | None],
+        on_result: Callable[[str, dict], object],
+        get_env: Callable[[], dict[str, object]],
+        get_data: Callable[[], dict[str, object]],
+        on_emit: Callable[[str, str], object],
         api_base: str = "http://localhost:3456/api",
     ):
         self._get_cell = get_cell
@@ -83,12 +82,12 @@ class ServerScheduler:
         self._on_emit = on_emit
         self._api_base = api_base
 
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._tasks: dict[str, asyncio.Task[None]] = {}
         self._running = True
-        self._queue_task: Optional[asyncio.Task] = None
-        self._cron_task: Optional[asyncio.Task] = None
+        self._queue_task: asyncio.Task[None] | None = None
+        self._cron_task: asyncio.Task[None] | None = None
 
-    async def run_once(self, cell_id: str, props: Optional[Dict[str, Any]] = None) -> Optional[dict]:
+    async def run_once(self, cell_id: str, props: dict[str, object] | None = None) -> dict | None:
         cell = self._get_cell(cell_id)
         if not cell:
             return None
@@ -114,7 +113,7 @@ class ServerScheduler:
 
         return result
 
-    async def start(self, cell_id: str):
+    async def start(self, cell_id: str) -> None:
         await self.stop(cell_id)
 
         cell = self._get_cell(cell_id)
@@ -137,7 +136,7 @@ class ServerScheduler:
 
         self._tasks[cell_id] = asyncio.create_task(_loop())
 
-    async def stop(self, cell_id: str):
+    async def stop(self, cell_id: str) -> None:
         task = self._tasks.pop(cell_id, None)
         if task:
             task.cancel()
@@ -146,23 +145,23 @@ class ServerScheduler:
             except asyncio.CancelledError:
                 pass
 
-    async def stop_all(self):
+    async def stop_all(self) -> None:
         for cell_id in list(self._tasks.keys()):
             await self.stop(cell_id)
 
     def is_running(self, cell_id: str) -> bool:
         return cell_id in self._tasks
 
-    def get_running_ids(self) -> List[str]:
+    def get_running_ids(self) -> list[str]:
         return list(self._tasks.keys())
 
-    async def restart(self, cell_id: str):
+    async def restart(self, cell_id: str) -> None:
         cell = self._get_cell(cell_id)
         await self.stop(cell_id)
         if cell and cell.get("enabled", False):
             await self.start(cell_id)
 
-    async def start_queue_polling(self):
+    async def start_queue_polling(self) -> None:
         if self._queue_task:
             return
 
@@ -197,7 +196,7 @@ class ServerScheduler:
 
         self._queue_task = asyncio.create_task(_poll())
 
-    async def stop_queue_polling(self):
+    async def stop_queue_polling(self) -> None:
         if self._queue_task:
             self._queue_task.cancel()
             try:
@@ -206,7 +205,7 @@ class ServerScheduler:
                 pass
             self._queue_task = None
 
-    async def start_cron_polling(self):
+    async def start_cron_polling(self) -> None:
         if self._cron_task:
             return
 
@@ -240,7 +239,7 @@ class ServerScheduler:
 
         self._cron_task = asyncio.create_task(_poll())
 
-    async def stop_cron_polling(self):
+    async def stop_cron_polling(self) -> None:
         if self._cron_task:
             self._cron_task.cancel()
             try:
@@ -249,7 +248,7 @@ class ServerScheduler:
                 pass
             self._cron_task = None
 
-    async def _dispatch_cron(self, cron: dict):
+    async def _dispatch_cron(self, cron: dict) -> None:
         payload = cron.get("payload", "{}")
         props = parse_message_body(payload)
         target = cron.get("target", {})
@@ -273,10 +272,10 @@ class ServerScheduler:
                 }
                 queue.setdefault("messages", []).append(msg)
 
-    async def run_cron_now(self, cron: dict):
+    async def run_cron_now(self, cron: dict) -> None:
         await self._dispatch_cron(cron)
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         self._running = False
         await self.stop_all()
         await self.stop_queue_polling()

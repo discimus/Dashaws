@@ -70,6 +70,7 @@ export function CellEditor({ cell }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const isExternalUpdateRef = useRef(false);
+  const isFocusedRef = useRef(false);
   const editableCompartmentRef = useRef(new Compartment());
   const updateCell = useCellsStore(s => s.updateCell);
   const lockCell = useCellsStore(s => s.lockCell);
@@ -77,6 +78,7 @@ export function CellEditor({ cell }: Props) {
   const clientId = useCellsStore(s => s.clientId);
 
   const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
     const st = useCellsStore.getState();
     const cc = st.cells.find(c => c.id === cell.id);
     if (cc?.lockedBy && cc.lockedBy !== st.clientId) return;
@@ -84,6 +86,7 @@ export function CellEditor({ cell }: Props) {
   }, [cell.id, lockCell]);
 
   const handleBlur = useCallback(() => {
+    isFocusedRef.current = false;
     unlockCell(cell.id);
   }, [cell.id, unlockCell]);
 
@@ -203,6 +206,7 @@ export function CellEditor({ cell }: Props) {
 
     const current = view.state.doc.toString();
     if (cell.script !== current) {
+      if (isFocusedRef.current) return;
       isExternalUpdateRef.current = true;
       const cursor = view.state.selection.main.head;
       view.dispatch({

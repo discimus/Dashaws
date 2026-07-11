@@ -28,6 +28,8 @@ let scheduler: Scheduler | null = null;
 
 let serverPollInterval: ReturnType<typeof setInterval> | null = null;
 
+const saveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
 function startServerPolling() {
   if (serverPollInterval) return;
   serverPollInterval = setInterval(async () => {
@@ -39,14 +41,11 @@ function startServerPolling() {
         const merged = remote.map(r => {
           const local = state.cells.find(c => c.id === r.id);
           if (!local) return r;
-          // If we hold the lock, keep our local script/name content
           if (r.lockedBy && r.lockedBy === state.clientId) {
-            return { ...r, script: local.script, name: local.name, updatedAt: local.updatedAt };
+            return { ...r, script: local.script, name: local.name, params: local.params, updatedAt: local.updatedAt };
           }
-          // Server is source of truth for status, lastRunAt, output, state
-          // But preserve local script/name if user is editing
           if (local.updatedAt > r.updatedAt) return local;
-          return r;
+          return { ...r, script: local.script, name: local.name, params: local.params };
         });
         // Add local-only cells (just added, not yet synced)  
         for (const c of state.cells) {
@@ -120,6 +119,9 @@ function saveKeepUnlocked(v: boolean): void {
 }
 
 function saveSessionPassword(pw: string): void {
+  // NOTE: Plaintext password stored in sessionStorage for auto-unlock.
+  // sessionStorage is tab-scoped and cleared on tab close, but any XSS on
+  // the same origin could read it. Enable "keep unlocked" only on trusted devices.
   try {
     sessionStorage.setItem(SESSION_PW_KEY, pw);
   } catch { /* noop */ }
@@ -567,9 +569,12 @@ console.log("Run count:", $state.counter);
     const cell = get().cells.find(c => c.id === id);
     if (cell) {
       if (isServerMode && apiClient) {
-        try {
-          await apiClient.save(cell);
-        } catch { /* ignore server rejection (e.g. locked by other) */ }
+        clearTimeout(saveTimers[id]);
+        saveTimers[id] = setTimeout(async () => {
+          try {
+            await apiClient!.save(get().cells.find(c => c.id === id) || cell);
+          } catch { /* ignore */ }
+        }, 800);
       } else {
         await storage.save(cell);
         if (updates.intervalMs !== undefined && scheduler?.isRunning(id)) {

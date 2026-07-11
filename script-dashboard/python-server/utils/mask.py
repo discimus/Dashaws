@@ -1,7 +1,7 @@
 """Secret masking utilities."""
 
 
-def mask_value(value, secrets_set):
+def mask_value(value, secrets_set: set[str]):
     """Mask secret values in an arbitrary structure."""
     if secrets_set is None or len(secrets_set) == 0:
         return value
@@ -14,7 +14,7 @@ def mask_value(value, secrets_set):
     return value
 
 
-def mask_string(text, secrets_set):
+def mask_string(text: str, secrets_set: set[str]) -> str:
     """Replace secret values with bullet characters."""
     if not text:
         return text
@@ -25,7 +25,7 @@ def mask_string(text, secrets_set):
     return result
 
 
-def mask_state(state, secrets_set):
+def mask_state(state: dict, secrets_set: set[str]) -> dict:
     """Mask all secret values in a state dict."""
     if not isinstance(state, dict):
         return state

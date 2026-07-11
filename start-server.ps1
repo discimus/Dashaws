@@ -9,6 +9,8 @@ param(
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Join-Path $scriptDir "script-dashboard"
+$venvDir = Join-Path $projectDir ".venv"
+$venvPython = Join-Path $venvDir "Scripts\python.exe"
 
 function Show-Usage {
     Write-Host "Usage: .\start-server.ps1 -Runtime <python|node> [-Port <port>]"
@@ -39,22 +41,58 @@ function Check-FrontendBuild {
     Write-Host "[preflight] Frontend build complete."
 }
 
+function Check-PythonVersion {
+    $verOutput = & $script:venvPython --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to get Python version from $script:venvPython"
+        exit 1
+    }
+    $versionMatch = $verOutput -match "(\d+\.\d+\.\d+)"
+    if (-not $versionMatch) {
+        Write-Error "Could not parse Python version from: $verOutput"
+        exit 1
+    }
+    $versionStr = $matches[1]
+    $required = [version]"3.12.3"
+    $current = [version]$versionStr
+    if ($current -lt $required) {
+        Write-Error "Python 3.12.3 or higher required. Found: $versionStr"
+        exit 1
+    }
+    Write-Host "[preflight] Python $versionStr OK."
+}
+
 function Check-PythonDeps {
     Set-Location $projectDir
+
+    # Create venv if it doesn't exist
+    if (-not (Test-Path $script:venvDir)) {
+        Write-Host "[preflight] Creating Python virtual environment..."
+        python -m venv $script:venvDir --clear
+        if (-not (Test-Path $script:venvPython)) {
+            Write-Error "Failed to create virtual environment at $script:venvDir"
+            exit 1
+        }
+    }
+
+    Check-PythonVersion
+
     $check = @"
-import fastapi, uvicorn, apscheduler
+import fastapi, uvicorn
 from Crypto.Cipher import AES
 import requests, feedparser, bs4, dotenv, xmltodict, pypdf
 import pandas, numpy, lxml, yaml, openpyxl, matplotlib
 import sqlalchemy, psycopg2, pytest
 "@
-    $result = python3 -c $check 2>&1
+    $result = & $script:venvPython -c $check 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[preflight] Python dependencies OK."
         return
     }
     Write-Host "[preflight] Python dependencies missing or incomplete. Installing..."
-    pip3 install -r python-server/requirements.txt
+    & $script:venvPython -m pip install --upgrade pip --quiet
+    & $script:venvPython -m pip install setuptools wheel --quiet
+    & $script:venvPython -m pip install -r python-server/requirements.txt
     if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit 1 }
     Write-Host "[preflight] Python dependencies installed."
 }
@@ -144,7 +182,7 @@ switch ($Runtime) {
         Check-PythonDeps
         Check-FrontendBuild
         Write-Host ""
-        python3 "$pythonServerDir\main.py"
+        & $venvPython "$pythonServerDir\main.py"
     }
     "node" {
         Write-Host "=== Dashaws Node.js Server ==="
