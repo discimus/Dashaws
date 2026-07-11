@@ -1,5 +1,9 @@
 import { maskState } from './mask.js';
 export async function executeScript(script, cellState, env, secrets, secretsObj, props, cellsApi, signal, config) {
+    const MAX_SCRIPT_SIZE = 1_000_000; // 1 MB
+    if (script.length > MAX_SCRIPT_SIZE) {
+        return { success: false, error: `Script exceeds max size (${MAX_SCRIPT_SIZE / 1000} KB)`, output: [], state: cellState };
+    }
     const output = [];
     const onLog = (entry) => output.push(entry);
     const timeoutMs = config.timeoutMs;
