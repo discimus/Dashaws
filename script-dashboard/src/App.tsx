@@ -17,13 +17,26 @@ import { InsecureContextBanner } from './components/InsecureContextBanner';
 export type View = 'overview' | 'scripts' | 'env' | 'secrets' | 'queues' | 'pubsub' | 'crons' | 'help';
 
 export default function App() {
-  const { loaded, authenticated, authRequired, init } = useCellsStore();
+  const { loaded, authenticated, authRequired, init, theme } = useCellsStore();
   const [view, setView] = useState<View>('overview');
   const [focusCellId, setFocusCellId] = useState<string | null>(null);
 
+  useEffect(() => { init(); }, [init]);
+
   useEffect(() => {
-    init();
-  }, [init]);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('dashaws-theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const navigateToEditor = (cellId: string) => {
     setFocusCellId(cellId);

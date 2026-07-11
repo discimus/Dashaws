@@ -1,15 +1,56 @@
+import { useState } from 'react';
 import { useCellsStore } from '../store/useCellsStore';
 
 export function HelpView() {
   const { addCell } = useCellsStore();
+  const [tab, setTab] = useState<'js' | 'python'>('js');
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-8 text-sm leading-relaxed">
       <h1 className="text-2xl font-bold text-on-surface">Script Reference</h1>
 
+      <div className="flex gap-2 border-b border-outline-variant">
+        <button
+          onClick={() => setTab('js')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            tab === 'js' ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8'
+          }`}
+        >
+          JavaScript
+        </button>
+        <button
+          onClick={() => setTab('python')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            tab === 'python' ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/8'
+          }`}
+        >
+          Python
+        </button>
+      </div>
+
+      {tab === 'js' ? <JsReference /> : <PythonReference />}
+
+      <Section title="Quick Start">
+        <p>Create your first script to get started:</p>
+        <button
+          onClick={addCell}
+          className="md-btn md-btn-filled mt-3 px-4 py-2 text-base"
+        >
+          + Add Script
+        </button>
+      </Section>
+
+      <div className="pb-12" />
+    </div>
+  );
+}
+
+function JsReference() {
+  return (
+    <>
       <Section title="Execution Model">
         <p>Each script runs inside an isolated sandbox using <Code>new Function(...)</Code> with <Code>"use strict"</Code>. Dangerous globals are shadowed with <Code>undefined</Code> to prevent escape. Scripts execute as async functions — you can <Code>await</Code> directly at the top level.</p>
-                <p className="mt-2">Scripts can run on a configurable interval (set via the UI), or be triggered manually with the Run Once button. The scheduler uses the <Code>signal</Code> <span className="text-on-surface-variant">(AbortSignal)</span> to interrupt execution cleanly when a script is stopped.</p>
+        <p className="mt-2">Scripts can run on a configurable interval (set via the UI), or be triggered manually with the Run Once button. The scheduler uses the <Code>signal</Code> <span className="text-on-surface-variant">(AbortSignal)</span> to interrupt execution cleanly when a script is stopped.</p>
       </Section>
 
       <Section title="Sandbox Globals ($-prefixed)">
@@ -67,155 +108,6 @@ $pubsub.emit("my-topic", JSON.stringify({
 }));
 
 // All subscribers receive: { name, body, timestamp }`}</Example>
-        </SubSection>
-      </Section>
-
-      <Section title="Python Scripts (server mode)">
-        <p>When running the <strong>Python server</strong> (<Code>./start-server.sh python</Code>), scripts are written in Python with these globals and libraries available:</p>
-
-        <SubSection title="print" type="builtin">
-          Replaces the standard <Code>print()</Code> — output is captured and displayed per-script instead of going to the server console.
-          <Example>{`print("Hello!")
-print("Counter:", state["counter"])
-
-# sep and end are supported
-print("a", "b", "c", sep=", ")`}</Example>
-        </SubSection>
-
-        <SubSection title="console" type="Console API (alias)">
-          Available as an alias for familiarity: <Code>console.log()</Code>, <Code>console.warn()</Code>, <Code>console.error()</Code>, <Code>console.info()</Code>, <Code>console.table()</Code>.
-        </SubSection>
-
-        <SubSection title="requests" type="HTTP client">
-          Full <Code>requests</Code> module for HTTP calls. Use <Code>requests.get()</Code>, <Code>requests.post()</Code>, <Code>requests.put()</Code>, etc. Returns a Response object with <Code>.status_code</Code>, <Code>.text</Code>, <Code>.json()</Code>, <Code>.headers</Code>.
-          <Example>{`# GET request
-resp = requests.get("https://api.example.com/data")
-print(resp.status_code)
-data = resp.json()
-
-# POST with JSON
-resp = requests.post("https://api.example.com/items", json={"name": "test"})
-
-# Authenticated request
-resp = requests.get("https://api.example.com",
-    headers={"Authorization": "Bearer " + secrets.get("API_KEY", "")})`}</Example>
-        </SubSection>
-
-        <SubSection title="Available libraries" type="import">
-          <p>These libraries are installed and available via <Code>import</Code>. Each listed library comes from the Python standard library or is pre-installed in the server environment.</p>
-
-          <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Web & HTTP</h4>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
-            <div><Code>requests</Code> — HTTP client (get/post/put)</div>
-            <div><Code>beautifulsoup4</Code> — HTML scraping and parsing</div>
-            <div><Code>feedparser</Code> — RSS / Atom feed parsing</div>
-            <div><Code>xmltodict</Code> — XML to dict conversion</div>
-            <div><Code>lxml</Code> — fast XML / HTML parser</div>
-            <div><Code>xml.etree</Code> — stdlib XML (ElementTree)</div>
-          </div>
-
-          <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Data & Documents</h4>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
-            <div><Code>pandas</Code> — data analysis / DataFrames</div>
-            <div><Code>numpy</Code> — numerical computing</div>
-            <div><Code>openpyxl</Code> — Excel .xlsx read/write</div>
-            <div><Code>pypdf</Code> — PDF text extraction</div>
-            <div><Code>pyyaml</Code> — YAML config parsing</div>
-            <div><Code>python-dotenv</Code> — .env file loading</div>
-            <div><Code>json</Code>, <Code>csv</Code> — stdlib parsers</div>
-            <div><Code>datetime</Code>, <Code>time</Code> — stdlib dates</div>
-          </div>
-
-          <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Databases</h4>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
-            <div><Code>sqlalchemy</Code> — SQL ORM (unified API)</div>
-            <div><Code>psycopg2</Code> — PostgreSQL adapter</div>
-            <div><Code>pymssql</Code> — SQL Server adapter</div>
-            <div><Code>pyodbc</Code> — ODBC (SQL Server, etc.)</div>
-          </div>
-
-          <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Charts</h4>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
-            <div><Code>matplotlib</Code> — charts saved as PNG</div>
-            <div><Code>pillow</Code> — image processing</div>
-          </div>
-
-          <p className="mt-3 text-on-surface-variant">Use standard <Code>import</Code> statements — any installed Python package is available.</p>
-          <Example>{`import pandas as pd
-import numpy as np
-import sqlalchemy as sa
-import matplotlib.pyplot as plt
-from bs4 import BeautifulSoup
-import yaml
-
-# Read Excel
-df = pd.read_excel("data.xlsx")
-print(df.head())
-
-# PostgreSQL with SQLAlchemy
-engine = sa.create_engine("postgresql://user:pass@host/db")
-with engine.connect() as conn:
-    df = pd.read_sql("SELECT * FROM users LIMIT 10", conn)
-print(df)
-
-# SQL Server with pyodbc
-engine = sa.create_engine("mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+17+for+SQL+Server")
-df.to_sql("export", engine, if_exists="replace")
-
-# RSS feed
-import feedparser
-feed = feedparser.parse("https://example.com/rss")
-for entry in feed.entries:
-    print(entry.title, entry.link)
-
-# YAML config
-config = yaml.safe_load(open("config.yml"))
-print(config["settings"])
-
-# Chart to PNG
-plt.figure()
-plt.plot([1, 2, 3], [4, 5, 6])
-plt.savefig("/tmp/chart.png")`}</Example>
-        </SubSection>
-
-        <SubSection title="Sandbox globals" type="Python">
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <div><Code>print(...)</Code> — captured output</div>
-            <div><Code>console.log/warn/error/info/table</Code> — JS alias</div>
-            <div><Code>requests</Code> — HTTP client module</div>
-            <div><Code>state</Code> — dict, mutable, persisted</div>
-            <div><Code>props</Code> — dict, from params/queue/pubsub</div>
-            <div><Code>env</Code> — dict, environment variables</div>
-            <div><Code>secrets</Code> — dict, encrypted secrets</div>
-            <div><Code>queue.enqueue(name, body)</Code> — enqueue message</div>
-            <div><Code>pubsub.emit(name, body)</Code> — emit event</div>
-          </div>
-        </SubSection>
-
-        <SubSection title="Full example" type="Python">
-          <Example>{`# Python script example
-print("Hello!")
-
-state["counter"] = state.get("counter", 0) + 1
-print("Run count:", state["counter"])
-
-# HTTP with requests
-resp = requests.get("https://api.github.com/zen")
-print("GitHub zen:", resp.text.strip())
-
-# Environment variables
-api_url = env.get("API_URL", "https://default.example.com")
-
-# Secrets
-token = secrets.get("API_KEY", "")
-resp = requests.get(api_url,
-    headers={"Authorization": "Bearer " + token})
-
-# Enqueue a message
-queue.enqueue("my-queue", {"task": "process", "id": 42})
-
-# Emit an event
-pubsub.emit("my-topic", {"event": "completed"})`}</Example>
         </SubSection>
       </Section>
 
@@ -324,7 +216,7 @@ const res = await fetch("https://example.com", { signal });`}</Example>
         </SubSection>
 
         <SubSection title="Constructor Stripping" type="Anti-escape">
-          <p>To prevent sandbox escape via the constructor chain (<Code>[].constructor.constructor → Function</Code>), all safe constructors have their <Code>.constructor</Code> property set to <Code>undefined</Code>:</p>
+          <p>To prevent sandbox escape via the constructor chain (<Code>{`[].constructor.constructor → Function`}</Code>), all safe constructors have their <Code>.constructor</Code> property set to <Code>undefined</Code>:</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {['Array', 'Object', 'String', 'Number', 'Boolean', 'RegExp', 'Map', 'Set', 'Promise', 'Error', 'Date'].map(name => (
               <span key={name} className="px-2 py-1 rounded-full bg-warning-container/40 text-on-warning-container text-xs font-mono border border-warning/40">{name}</span>
@@ -343,43 +235,207 @@ const res = await fetch("https://example.com", { signal });`}</Example>
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b border-outline-variant text-left">
-              <th className="py-1.5 pr-4 text-on-surface-variant font-semibold w-40">Shortcut</th>
+              <th className="py-1.5 pr-4 text-on-surface-variant font-semibold w-48">Shortcut</th>
               <th className="py-1.5 text-on-surface-variant font-semibold">Action</th>
             </tr>
           </thead>
           <tbody className="text-on-surface-variant">
             <tr className="border-b border-outline-variant/50">
-              <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + Enter</Code></td>
-              <td className="py-1.5">Run script once</td>
+              <td className="py-1.5 pr-4"><Code>Ctrl+Space</Code></td>
+              <td className="py-1.5">Open autocomplete</td>
+            </tr>
+            <tr className="border-b border-outline-variant/50">
+              <td className="py-1.5 pr-4"><Code>Tab</Code> / <Code>Shift+Tab</Code></td>
+              <td className="py-1.5">Indent / outdent</td>
+            </tr>
+            <tr className="border-b border-outline-variant/50">
+              <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + /</Code></td>
+              <td className="py-1.5">Toggle comment</td>
             </tr>
             <tr className="border-b border-outline-variant/50">
               <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + Shift + F</Code></td>
               <td className="py-1.5">Format JSON in props editor</td>
             </tr>
-            <tr className="border-b border-outline-variant/50">
-              <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + /</Code></td>
-              <td className="py-1.5">Toggle comment in script editor</td>
-            </tr>
-            <tr className="border-b border-outline-variant/50">
-              <td className="py-1.5 pr-4"><Code>Ctrl/Cmd + S</Code></td>
-              <td className="py-1.5">Save script (autosaved on blur as well)</td>
-            </tr>
           </tbody>
         </table>
       </Section>
+    </>
+  );
+}
 
-      <Section title="Quick Start">
-        <p>Create your first script to get started:</p>
-        <button
-          onClick={addCell}
-          className="md-btn md-btn-filled mt-3 px-4 py-2 text-base"
-        >
-          + Add Script
-        </button>
+function PythonReference() {
+  return (
+    <>
+      <Section title="Execution Model">
+        <p>When running the <strong>Python server</strong> (<Code>./start-server.sh python</Code>), scripts are executed via <Code>exec()</Code> in an isolated thread using <Code>asyncio.to_thread()</Code>. The event loop stays free to handle other requests.</p>
+        <p className="mt-2">Scripts run on configurable intervals or can be triggered manually via Run Once. A subset of safe builtins is provided — dangerous modules like <Code>subprocess</Code>, <Code>socket</Code>, <Code>shutil</Code> are blocked. File access is restricted to <Code>/tmp</Code> and the data directory.</p>
       </Section>
 
-      <div className="pb-12" />
-    </div>
+      <Section title="Sandbox Globals">
+        <SubSection title="state" type="dict">
+          Persists data <em>across</em> script runs. A standard Python dict — use <Code>state["key"]</Code> or <Code>state.get("key", default)</Code>.
+          <Example>{`state["counter"] = state.get("counter", 0) + 1
+print("Run count:", state["counter"])
+
+# Store complex data
+state["last_items"] = [1, 2, 3]
+state["config"] = {"endpoint": "users", "dry": True}`}</Example>
+        </SubSection>
+
+        <SubSection title="env" type="dict[str, str]">
+          Environment variables configured in the <strong>Environment</strong> tab. All values are strings.
+          <Example>{`api_url = env.get("API_URL", "https://default.example.com")
+resp = requests.get(api_url)
+print(resp.status_code)`}</Example>
+        </SubSection>
+
+        <SubSection title="secrets" type="dict[str, str]">
+          Encrypted secrets from the <strong>Secrets</strong> tab. AES-GCM encrypted. Values are automatically masked in console output.
+          <Example>{`token = secrets.get("API_KEY", "")
+resp = requests.get("https://api.example.com",
+    headers={"Authorization": f"Bearer {token}"})
+# token appears as \u2022\u2022\u2022 in logs`}</Example>
+        </SubSection>
+
+        <SubSection title="props" type="dict">
+          Parameters defined in the <strong>gear (⚙)</strong> icon. Merged with queue/pubsub message bodies.
+          <Example>{`# Gear defines: { "endpoint": "users" }
+# Queue message: { "dryRun": true }
+# → props = { "endpoint": "users", "dryRun": true }
+
+print("Endpoint:", props.get("endpoint"))
+if props.get("dryRun"):
+    print("Dry run mode")`}</Example>
+        </SubSection>
+
+        <SubSection title="queue" type="{ enqueue }">
+          FIFO message queues. Enqueue messages programmatically from any script.
+          <Example>{`# Enqueue a message
+queue.enqueue("my-queue", {"task": "send-email", "to": "user@example.com"})
+
+# Queue subscribers receive the message as $props/props`}</Example>
+        </SubSection>
+
+        <SubSection title="pubsub" type="{ emit }">
+          Broadcast event topics. Emitting triggers all subscribed scripts immediately.
+          <Example>{`# Emit an event
+pubsub.emit("my-topic", {"event": "deploy", "version": "v2.1.0"})
+
+# All subscribers receive the message as $props/props`}</Example>
+        </SubSection>
+
+        <SubSection title="console" type="Console API">
+          JS-style logging API: <Code>console.log()</Code>, <Code>console.warn()</Code>, <Code>console.error()</Code>, <Code>console.info()</Code>, <Code>console.table()</Code>. Output is captured per-script.
+        </SubSection>
+
+        <SubSection title="print" type="builtin">
+          Replaces the standard <Code>print()</Code> — output is captured and displayed per-script. Supports <Code>sep</Code> and <Code>end</Code> kwargs.
+          <Example>{`print("Hello!")
+print("Counter:", state["counter"])
+print("a", "b", "c", sep=", ")`}</Example>
+        </SubSection>
+
+        <SubSection title="requests" type="HTTP client">
+          Full <Code>requests</Code> module for HTTP calls.
+          <Example>{`# GET
+resp = requests.get("https://api.github.com/zen")
+print(resp.status_code, resp.text.strip())
+
+# POST with JSON
+resp = requests.post("https://api.example.com/items", json={"name": "test"})
+
+# Auth
+resp = requests.get("https://api.example.com",
+    headers={"Authorization": f"Bearer {secrets.get('API_KEY', '')}"})`}</Example>
+        </SubSection>
+      </Section>
+
+      <Section title="Available Libraries">
+        <p className="text-on-surface-variant">These libraries are installed and available via standard Python <Code>import</Code>.</p>
+
+        <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Web & HTTP</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
+          <div><Code>requests</Code> — HTTP client</div>
+          <div><Code>beautifulsoup4</Code> — HTML parsing</div>
+          <div><Code>feedparser</Code> — RSS / Atom feeds</div>
+          <div><Code>xmltodict</Code> — XML to dict</div>
+          <div><Code>lxml</Code> — fast XML / HTML parser</div>
+          <div><Code>xml.etree</Code> — stdlib XML</div>
+        </div>
+
+        <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Data & Documents</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
+          <div><Code>pandas</Code> — data analysis / DataFrames</div>
+          <div><Code>numpy</Code> — numerical computing</div>
+          <div><Code>openpyxl</Code> — Excel .xlsx read/write</div>
+          <div><Code>pypdf</Code> — PDF text extraction</div>
+          <div><Code>pyyaml</Code> — YAML parsing</div>
+          <div><Code>python-dotenv</Code> — .env loading</div>
+          <div><Code>json</Code>, <Code>csv</Code> — stdlib parsers</div>
+          <div><Code>datetime</Code>, <Code>time</Code> — stdlib dates</div>
+        </div>
+
+        <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Databases</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
+          <div><Code>sqlalchemy</Code> — SQL ORM</div>
+          <div><Code>psycopg2</Code> — PostgreSQL</div>
+          <div><Code>pymssql</Code> — SQL Server</div>
+          <div><Code>pyodbc</Code> — ODBC</div>
+        </div>
+
+        <h4 className="mt-3 mb-1 text-xs font-semibold text-warning">Charts</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
+          <div><Code>matplotlib</Code> — charts as PNG</div>
+          <div><Code>pillow</Code> — image processing</div>
+        </div>
+
+        <Example>{`import pandas as pd
+import numpy as np
+import sqlalchemy as sa
+import matplotlib.pyplot as plt
+from bs4 import BeautifulSoup
+import yaml
+
+# Read Excel
+df = pd.read_excel("data.xlsx")
+print(df.head())
+
+# PostgreSQL with SQLAlchemy
+engine = sa.create_engine("postgresql://user:pass@host/db")
+with engine.connect() as conn:
+    df = pd.read_sql("SELECT * FROM users LIMIT 10", conn)
+
+# RSS feed
+import feedparser
+feed = feedparser.parse("https://example.com/rss")
+for entry in feed.entries:
+    print(entry.title, entry.link)
+
+# Chart to PNG
+plt.figure()
+plt.plot([1, 2, 3], [4, 5, 6])
+plt.savefig("/tmp/chart.png")`}</Example>
+      </Section>
+
+      <Section title="Python Security Model">
+        <SubSection title="Blocked Modules" type="Never importable">
+          <p>These modules are blocked at import time. Attempting to import them raises <Code>ImportError</Code>:</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {['subprocess', 'shutil', 'socket', 'ctypes', 'multiprocessing', 'pty', 'signal', 'concurrent.futures', 'gc', 'faulthandler', 'traceback', 'glob', 'tempfile', 'pickle', 'marshal', 'shelve', 'code', 'codeop', 'imp', 'pkgutil', 'runpy', 'tokenize', 'smtpd', 'smtplib', 'email'].map(name => (
+              <span key={name} className="px-2 py-1 rounded-full bg-error-container/40 text-on-error-container text-xs font-mono border border-error/40">{name}</span>
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection title="Restricted open()" type="File access">
+          <p>The <Code>open()</Code> builtin is replaced with a restricted version that only allows reads/writes under <Code>/tmp</Code> and the <Code>DATA_DIR</Code>. Attempting to access system files raises <Code>PermissionError</Code>.</p>
+        </SubSection>
+
+        <SubSection title="Secret Masking" type="Output protection">
+          <p>Secret values are replaced with bullet characters (<Code>{'\u2022'}</Code>) in all output and state snapshots. Masking is applied recursively through objects, arrays, and nested structures.</p>
+        </SubSection>
+      </Section>
+    </>
   );
 }
 

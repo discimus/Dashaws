@@ -7,6 +7,7 @@ import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
 import type { Cell } from '../types/cell';
+import { useCellsStore } from '../store/useCellsStore';
 
 interface Props {
   cell: Cell;
@@ -16,13 +17,14 @@ interface Props {
 export function PropsEditor({ cell, onSave }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const theme = useCellsStore(s => s.theme);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const jsonTheme = Prec.high(EditorView.theme({
-      '&': { backgroundColor: '#191a1e !important' },
-      '.cm-gutters': { backgroundColor: '#141316 !important', borderRight: '1px solid #43474e !important', color: '#8e9099 !important' },
+      '&': { backgroundColor: 'var(--color-surface-container-low) !important' },
+      '.cm-gutters': { backgroundColor: 'var(--color-surface) !important', borderRight: '1px solid var(--color-outline-variant) !important', color: 'var(--color-outline) !important' },
     }));
 
     const autoHeight = EditorView.theme({
@@ -86,7 +88,7 @@ export function PropsEditor({ cell, onSave }: Props) {
       extensions: [
         basicSetup,
         json(),
-        oneDark,
+        theme === 'dark' ? oneDark : [],
         linter(jsonParseLinter()),
         shortcuts,
         jsonTheme,

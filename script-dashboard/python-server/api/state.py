@@ -269,8 +269,6 @@ async def init_server() -> None:
         if "language" not in cell:
             cell["language"] = "python"
 
-    PORT = int(os.environ.get("PORT", "3456"))
-    api_base = os.environ.get("DASHAWS_API_BASE", f"http://localhost:{PORT}/api")
 
     def get_cell(id: str) -> dict | None:
         for c in cells:
@@ -320,7 +318,6 @@ async def init_server() -> None:
         get_env=get_env,
         get_data=get_data,
         on_emit=on_emit,
-        api_base=api_base,
     )
 
     running = [c for c in cells if c.get("enabled", False)]

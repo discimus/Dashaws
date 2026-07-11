@@ -50,7 +50,7 @@ check_frontend_build() {
 }
 
 check_python_version() {
-    VERSION=$("$VENV_PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || echo "0.0.0")
+    VERSION=$("$PYTHON_CMD" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || echo "0.0.0")
     REQUIRED_MAJOR=3
     REQUIRED_MINOR=12
     REQUIRED_PATCH=3
@@ -76,6 +76,16 @@ check_python_deps() {
         if [ ! -f "$VENV_PYTHON" ]; then
             echo "ERROR: Failed to create virtual environment at $VENV_DIR"
             exit 1
+        fi
+    else
+        if ! "$VENV_PYTHON" -c "import sys" 2>/dev/null; then
+            echo "[preflight] Virtual environment appears broken — recreating..."
+            rm -rf "$VENV_DIR"
+            "$PYTHON_CMD" -m venv "$VENV_DIR"
+            if [ ! -f "$VENV_PYTHON" ]; then
+                echo "ERROR: Failed to recreate virtual environment at $VENV_DIR"
+                exit 1
+            fi
         fi
     fi
 

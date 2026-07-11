@@ -214,7 +214,7 @@ export function CellControls({ cell, onToggleParams }: Props) {
             className="text-on-surface-variant hover:text-on-surface cursor-help text-xs"
             title="Parameters define $props values passed into scripts. Overridden by queue or pubsub message bodies. Access inside scripts as $props.key."
           >
-            &#9432;
+            <svg width="13" height="13" viewBox="0 0 13 13" className="inline-block align-middle shrink-0"><circle cx="6.5" cy="6.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.6"/><text x="6.5" y="9.5" textAnchor="middle" fontSize="9" fontWeight="bold" fill="currentColor" opacity="0.8">?</text></svg>
           </span>
         </span>
 
